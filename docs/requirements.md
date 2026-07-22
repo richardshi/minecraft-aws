@@ -88,9 +88,30 @@ All tunable parameters are defined in `infra/config/server-config.ts`:
 - Java memory allocation (`-Xms`, `-Xmx`)
 - Backup retention count
 - Log retention days
-- Monthly budget threshold and alert email
+- Monthly budget threshold (`monthlyBudgetUsd`). The alert email itself is
+  *not* part of this file or any local config — see "Budget Alert Email" below
 - EULA acceptance flag
 - Optional DNS hostname and hosted zone ID
+
+### Budget Alert Email
+
+The budget alert email address is deliberately kept out of source, config files,
+and `.env` files. It's stored in AWS Systems Manager Parameter Store as a
+standard `String` parameter, `/minecraft/budget-alert-email`, and referenced
+from `infra/lib/minecraft-stack.ts` via a CloudFormation dynamic reference
+(`{{resolve:ssm:...}}`). CloudFormation resolves it at deploy time — the real
+address never appears in the synthesized template, in `cdk.out/`, or in
+`describe-stacks` output.
+
+The parameter must exist before the first deploy:
+
+```bash
+aws ssm put-parameter --name /minecraft/budget-alert-email \
+  --type String --value "you@example.com" --region us-west-2
+```
+
+To change the alert address later, overwrite the parameter (`--overwrite`) and
+redeploy — no code change is needed.
 
 ---
 

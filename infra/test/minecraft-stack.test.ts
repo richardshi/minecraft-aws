@@ -357,6 +357,69 @@ describe('Budget', () => {
       }),
     });
   });
+
+  test('subscriber address resolves from SSM via a dynamic reference, not a literal value', () => {
+    template.hasResourceProperties('AWS::Budgets::Budget', {
+      NotificationsWithSubscribers: Match.arrayWith([
+        Match.objectLike({
+          Subscribers: Match.arrayWith([
+            Match.objectLike({
+              SubscriptionType: 'EMAIL',
+              Address: '{{resolve:ssm:/minecraft/budget-alert-email}}',
+            }),
+          ]),
+        }),
+      ]),
+    });
+  });
+
+  test('every subscriber (80% and 100% thresholds) uses the same dynamic reference — none is a literal address', () => {
+    const budgets = template.findResources('AWS::Budgets::Budget');
+    const budgetKeys = Object.keys(budgets);
+    expect(budgetKeys).toHaveLength(1);
+
+    const notifications: Array<{ Subscribers: Array<{ SubscriptionType: string; Address: string }> }> =
+      budgets[budgetKeys[0]].Properties.NotificationsWithSubscribers;
+
+    // Both the 80% and 100% notification blocks must be present...
+    expect(notifications).toHaveLength(2);
+
+    // ...and every single subscriber across both must be the dynamic
+    // reference — never a literal string (e.g. a hardcoded/placeholder email).
+    const allAddresses = notifications.flatMap(n => n.Subscribers.map(s => s.Address));
+    expect(allAddresses.length).toBeGreaterThan(0);
+    for (const address of allAddresses) {
+      expect(address).toBe('{{resolve:ssm:/minecraft/budget-alert-email}}');
+    }
+  });
+
+  test('subscriber address does not change across different serverConfig overrides', () => {
+    // The email is sourced from SSM, not from ServerConfig, so it must be
+    // identical regardless of what config values are passed in.
+    const overriddenTemplate = makeStack({ monthlyBudgetUsd: 999 });
+    const budgets = overriddenTemplate.findResources('AWS::Budgets::Budget');
+    const budgetKey = Object.keys(budgets)[0];
+    const notifications: Array<{ Subscribers: Array<{ Address: string }> }> =
+      budgets[budgetKey].Properties.NotificationsWithSubscribers;
+
+    for (const notification of notifications) {
+      for (const subscriber of notification.Subscribers) {
+        expect(subscriber.Address).toBe('{{resolve:ssm:/minecraft/budget-alert-email}}');
+      }
+    }
+  });
+
+  test('does not create an AWS::SSM::Parameter::Value CloudFormation parameter for the alert email', () => {
+    // A dynamic reference resolves inline and is never echoed back via
+    // describe-stacks; a CfnParameter of type AWS::SSM::Parameter::Value<...>
+    // would be, so make sure we're not accidentally using that mechanism.
+    const parameters = template.toJSON().Parameters ?? {};
+    for (const param of Object.values(parameters) as Array<{ Type?: string; Default?: string }>) {
+      if (typeof param.Default === 'string' && param.Default.includes('budget-alert-email')) {
+        throw new Error('budget alert email must not be exposed via a CloudFormation Parameter');
+      }
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

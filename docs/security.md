@@ -142,6 +142,11 @@ in your local working copy. Do not commit this change to version control.
 - AWS credentials are provided to the instance via the IAM instance role — no
   long-term credentials are stored on disk or in environment variables.
 - The `.gitignore` excludes `.env`, `*.pem`, `credentials`, and similar files.
+- The budget alert email address lives in AWS Systems Manager Parameter Store
+  (`/minecraft/budget-alert-email`), not in source or `.env` — see
+  [requirements.md](requirements.md#budget-alert-email) for setup. It's
+  referenced via a CloudFormation dynamic reference, so the resolved value
+  never appears in the synthesized template or in `describe-stacks` output.
 
 ---
 

@@ -9,6 +9,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as budgets from 'aws-cdk-lib/aws-budgets';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { ServerConfig } from '../config/server-config.js';
 
@@ -220,6 +221,24 @@ export class MinecraftStack extends cdk.Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
+    // Budget alert email is never stored in source or config. It's read from
+    // an existing SSM parameter via a CloudFormation dynamic reference
+    // ({{resolve:ssm:...}}), resolved by CloudFormation at deploy time — the
+    // real address never appears in the synthesized template, in source, or
+    // in `describe-stacks` output (unlike AWS::SSM::Parameter::Value<String>
+    // template parameters, dynamic references aren't echoed back anywhere).
+    // Create the parameter once, before the first deploy:
+    //   aws ssm put-parameter --name /minecraft/budget-alert-email \
+    //     --type String --value "you@example.com" --region us-west-2
+    const budgetAlertEmail = ssm.StringParameter.fromStringParameterAttributes(
+      this,
+      'BudgetAlertEmailParameter',
+      {
+        parameterName: '/minecraft/budget-alert-email',
+        forceDynamicReference: true,
+      },
+    ).stringValue;
+
     // Monthly billing budget with email alert
     new budgets.CfnBudget(this, 'MinecraftBudget', {
       budget: {
@@ -242,7 +261,7 @@ export class MinecraftStack extends cdk.Stack {
           subscribers: [
             {
               subscriptionType: 'EMAIL',
-              address: config.budgetAlertEmail,
+              address: budgetAlertEmail,
             },
           ],
         },
@@ -256,7 +275,7 @@ export class MinecraftStack extends cdk.Stack {
           subscribers: [
             {
               subscriptionType: 'EMAIL',
-              address: config.budgetAlertEmail,
+              address: budgetAlertEmail,
             },
           ],
         },

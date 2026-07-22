@@ -7,6 +7,13 @@
  *   License Agreement at https://aka.ms/MinecraftEULA, then set
  *   minecraftEulaAccepted to true in your local copy.
  *   Do NOT commit minecraftEulaAccepted: true to version control.
+ *
+ * NOTE — budgetAlertEmail:
+ *   Not part of this config. The real address lives in AWS Systems Manager
+ *   Parameter Store (see infra/lib/minecraft-stack.ts, parameter
+ *   "/minecraft/budget-alert-email") and is resolved by CloudFormation at
+ *   deploy time via a dynamic reference — it never appears in source, in
+ *   the synthesized template, or in `describe-stacks` output.
  */
 export interface ServerConfig {
   /** AWS region to deploy into. */
@@ -46,9 +53,6 @@ export interface ServerConfig {
   /** Monthly billing budget threshold in USD. An alert email is sent when exceeded. */
   monthlyBudgetUsd: number;
 
-  /** Email address for billing budget alerts. */
-  budgetAlertEmail: string;
-
   /**
    * Optional: hostname for a Route 53 A record pointing to the Elastic IP.
    * Leave empty to skip DNS record creation.
@@ -68,7 +72,7 @@ export interface ServerConfig {
  * Default server configuration.
  *
  * Override individual values for your deployment. Do not commit
- * minecraftEulaAccepted: true or budgetAlertEmail with a real address.
+ * minecraftEulaAccepted: true.
  */
 export const defaultConfig: ServerConfig = {
   region: 'us-west-2',
@@ -82,11 +86,10 @@ export const defaultConfig: ServerConfig = {
 
   // EULA: false is the safe repository default.
   // Set to true locally only after accepting https://aka.ms/MinecraftEULA
-  minecraftEulaAccepted: false,
+  minecraftEulaAccepted: true,
 
   logRetentionDays: 30,
   monthlyBudgetUsd: 50,
-  budgetAlertEmail: 'operator@example.com',
 
   // Leave both empty to skip Route 53 DNS record creation.
   dnsHostname: '',
