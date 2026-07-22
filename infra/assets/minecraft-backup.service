@@ -1,0 +1,22 @@
+[Unit]
+Description=Minecraft Hourly Backup
+Documentation=file:///usr/local/bin/backup.sh
+# Run after (not requiring) the Minecraft service — backup.sh checks if
+# minecraft.service is active and exits cleanly if it is not.
+After=minecraft.service
+
+[Service]
+Type=oneshot
+User=minecraft
+Group=minecraft
+
+# Inherit environment (bucket name, retention, region) from the env file
+EnvironmentFile=/opt/minecraft/minecraft-env
+
+ExecStart=/usr/local/bin/backup.sh
+
+# Allow up to 10 minutes for the backup to complete
+TimeoutStartSec=600
+
+StandardOutput=append:/var/log/minecraft/backup.log
+StandardError=append:/var/log/minecraft/backup.log

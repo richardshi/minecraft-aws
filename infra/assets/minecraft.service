@@ -1,0 +1,46 @@
+[Unit]
+Description=Minecraft Java Edition Server
+Documentation=https://minecraft.wiki/w/Tutorials/Setting_up_a_server
+After=network.target
+# Ensure the EBS data volume is mounted before starting
+RequiresMountsFor=/opt/minecraft
+
+[Service]
+User=minecraft
+Group=minecraft
+WorkingDirectory=/opt/minecraft
+
+# RuntimeDirectory creates /run/minecraft owned by the minecraft user.
+# It is cleaned up automatically when the service stops.
+RuntimeDirectory=minecraft
+RuntimeDirectoryMode=0755
+
+# Environment variables: heap sizes, bucket name, region
+EnvironmentFile=/opt/minecraft/minecraft-env
+
+# ExecStart calls the FIFO wrapper, which execs the JVM.
+# Systemd tracks the JVM process directly (not a wrapper).
+ExecStart=/usr/local/bin/start-minecraft.sh
+
+# Graceful shutdown sequence:
+#   1. save-all flush  — force a full world flush to disk
+#   2. sleep 10        — wait for flush to complete (Saved the game log line)
+#   3. stop            — send the stop command to the server
+# TimeoutStopSec=90 gives the server time to save and exit cleanly.
+ExecStop=/bin/sh -c 'printf "save-all flush\n" > /run/minecraft/stdin; sleep 10; printf "stop\n" > /run/minecraft/stdin'
+
+TimeoutStopSec=90
+
+# Restart on crash (non-zero exit). A clean /stop exits with code 0 — no restart.
+Restart=on-failure
+RestartSec=30
+
+# Kill the entire cgroup on stop, not just the main process
+KillMode=control-group
+
+# Append server output to the log file (picked up by CloudWatch agent)
+StandardOutput=append:/var/log/minecraft/server.log
+StandardError=append:/var/log/minecraft/server.log
+
+[Install]
+WantedBy=multi-user.target

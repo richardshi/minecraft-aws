@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Minecraft backup every hour
+Documentation=file:///usr/local/bin/backup.sh
+
+[Timer]
+# Fire at the top of every hour
+OnCalendar=hourly
+# If a run was missed (e.g. instance was stopped), run immediately on next start
+Persistent=true
+# Add a small random delay to avoid a thundering-herd if multiple timers fire
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
