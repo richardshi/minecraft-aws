@@ -1,19 +1,19 @@
 #!/bin/bash
-# install.sh — Minecraft server bootstrap installer.
+# install.sh - Minecraft server bootstrap installer.
 #
 # Runs as root on first boot via EC2 user-data, and can be re-run manually
 # via SSM Session Manager to apply updates (see docs/operations.md).
 #
 # Required environment variables (injected by CDK user-data):
-#   MINECRAFT_EULA_ACCEPTED  — must be "true" (operator must accept EULA first)
-#   MINECRAFT_VERSION        — e.g. "26.1.2"
-#   MINECRAFT_PORT           — e.g. "25565"
-#   JAVA_XMS                 — e.g. "2G"
-#   JAVA_XMX                 — e.g. "2G"
-#   BACKUP_BUCKET            — S3 bucket name for backups
-#   BACKUP_RETENTION         — number of backups to keep, e.g. "5"
-#   EBS_VOLUME_ID            — EBS volume ID, e.g. "vol-0abc1234"
-#   AWS_DEFAULT_REGION       — AWS region
+#   MINECRAFT_EULA_ACCEPTED  - must be "true" (operator must accept EULA first)
+#   MINECRAFT_VERSION        - e.g. "26.1.2"
+#   MINECRAFT_PORT           - e.g. "25565"
+#   JAVA_XMS                 - e.g. "2G"
+#   JAVA_XMX                 - e.g. "2G"
+#   BACKUP_BUCKET            - S3 bucket name for backups
+#   BACKUP_RETENTION         - number of backups to keep, e.g. "5"
+#   EBS_VOLUME_ID            - EBS volume ID, e.g. "vol-0abc1234"
+#   AWS_DEFAULT_REGION       - AWS region
 
 set -euo pipefail
 
@@ -169,12 +169,12 @@ else
   log "server.jar already present at ${JAR_PATH}, skipping download"
 fi
 
-# ---- server.properties (write only if absent — preserves operator edits) ----
+# ---- server.properties (write only if absent - preserves operator edits) ----
 PROPS_FILE="${MINECRAFT_DIR}/server.properties"
 if [[ ! -f "${PROPS_FILE}" ]]; then
   log "Writing server.properties..."
   cat > "${PROPS_FILE}" <<EOF
-# Minecraft server properties — managed by install.sh
+# Minecraft server properties - managed by install.sh
 # Edit via SSM Session Manager. See docs/operations.md.
 server-port=${MINECRAFT_PORT}
 online-mode=true
@@ -198,13 +198,13 @@ fi
 EULA_FILE="${MINECRAFT_DIR}/eula.txt"
 log "Writing eula.txt (eula=true)..."
 cat > "${EULA_FILE}" <<EOF
-# Minecraft EULA — accepted by operator via minecraftEulaAccepted config flag.
+# Minecraft EULA - accepted by operator via minecraftEulaAccepted config flag.
 # See https://aka.ms/MinecraftEULA
 eula=true
 EOF
 chown "${MINECRAFT_USER}:${MINECRAFT_USER}" "${EULA_FILE}"
 
-# ---- whitelist.json (write only if absent — preserves operator whitelist) ----
+# ---- whitelist.json (write only if absent - preserves operator whitelist) ----
 WHITELIST_FILE="${MINECRAFT_DIR}/whitelist.json"
 if [[ ! -f "${WHITELIST_FILE}" ]]; then
   log "Writing empty whitelist.json..."

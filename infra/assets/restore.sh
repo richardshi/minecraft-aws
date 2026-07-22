@@ -1,5 +1,5 @@
 #!/bin/bash
-# restore.sh — Restore a Minecraft world backup from S3.
+# restore.sh - Restore a Minecraft world backup from S3.
 #
 # Usage:
 #   restore.sh [--backup-key <s3-key>] [--dry-run]
@@ -10,17 +10,17 @@
 #   --dry-run            Print all steps without executing any changes.
 #
 # Required environment variables (set in /opt/minecraft/minecraft-env):
-#   BACKUP_BUCKET      — S3 bucket name
-#   AWS_DEFAULT_REGION — AWS region
+#   BACKUP_BUCKET      - S3 bucket name
+#   AWS_DEFAULT_REGION - AWS region
 #
 # Restore sequence:
 #   1. Select the backup (list-and-prompt, or --backup-key).
 #   2. Download the archive.
-#   3. Validate it's a well-formed tar.gz (tar -tzf) — no state touched yet.
+#   3. Validate it's a well-formed tar.gz (tar -tzf) - no state touched yet.
 #   4. Extract into a staging directory alongside the live data (same
 #      filesystem, so the later swap-in is an instant rename, not a copy).
 #   5. Verify the staged extraction actually contains the expected world
-#      directory — no state touched yet.
+#      directory - no state touched yet.
 #   6. Only now stop minecraft.service.
 #   7. Rename the current world directories aside as a rollback copy.
 #   8. Move the staged world into place and start minecraft.service.
@@ -28,7 +28,7 @@
 #      come up healthy in time, roll back: preserve the failed attempt,
 #      restore the rollback copy, and restart with the known-good world.
 #
-# Every failure through step 5 leaves minecraft.service untouched — the
+# Every failure through step 5 leaves minecraft.service untouched - the
 # server keeps running the whole time a backup is being downloaded,
 # validated, and staged. Only steps 6-9 involve any real downtime, and
 # steps 8-9 are the only ones that can trigger an automatic rollback,
@@ -41,7 +41,7 @@ shopt -s dotglob
 
 # ---- Configuration -------------------------------------------------------
 # Path variables use environment overrides when set, falling back to
-# production defaults — mirrors backup.sh, so test harnesses can inject
+# production defaults - mirrors backup.sh, so test harnesses can inject
 # isolated paths without modifying the script itself.
 MINECRAFT_DIR="${MINECRAFT_DIR:-/opt/minecraft}"
 BACKUP_LOG="${BACKUP_LOG:-/var/log/minecraft/backup.log}"
@@ -96,7 +96,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "${DRY_RUN}" == "true" ]]; then
-  echo "=== DRY-RUN mode — no changes will be made ==="
+  echo "=== DRY-RUN mode - no changes will be made ==="
 fi
 
 # ---- Select backup -----------------------------------------------------------
@@ -171,7 +171,7 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   dry_log "tar -tzf ${ARCHIVE}"
 else
   if ! tar -tzf "${ARCHIVE}" > /dev/null 2>&1; then
-    log "BACKUP_FAILED: ${BACKUP_KEY} is not a valid tar.gz archive — aborting (minecraft.service was not touched)"
+    log "BACKUP_FAILED: ${BACKUP_KEY} is not a valid tar.gz archive - aborting (minecraft.service was not touched)"
     exit 1
   fi
 fi
@@ -193,7 +193,7 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   dry_log "Would verify ${STAGING_DIR}/${LEVEL_NAME} exists"
 else
   if [[ ! -d "${STAGING_DIR}/${LEVEL_NAME}" ]]; then
-    log "BACKUP_FAILED: ${BACKUP_KEY} does not contain expected world directory '${LEVEL_NAME}/' — aborting (minecraft.service was not touched)"
+    log "BACKUP_FAILED: ${BACKUP_KEY} does not contain expected world directory '${LEVEL_NAME}/' - aborting (minecraft.service was not touched)"
     rm -rf "${STAGING_DIR}"
     exit 1
   fi
@@ -251,7 +251,7 @@ do_swap_and_start() {
       break
     fi
     if ! systemctl is-active --quiet minecraft.service; then
-      log "minecraft.service is not active after start — not waiting further"
+      log "minecraft.service is not active after start - not waiting further"
       break
     fi
     sleep 1
@@ -262,7 +262,7 @@ do_swap_and_start() {
 }
 
 roll_back() {
-  log "BACKUP_FAILED: restore of ${BACKUP_KEY} did not come up healthy — rolling back"
+  log "BACKUP_FAILED: restore of ${BACKUP_KEY} did not come up healthy - rolling back"
   systemctl stop minecraft.service 2>/dev/null || true
 
   for dir in \

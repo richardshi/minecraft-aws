@@ -23,15 +23,15 @@ EnvironmentFile=/opt/minecraft/minecraft-env
 ExecStart=/usr/local/bin/start-minecraft.sh
 
 # Graceful shutdown sequence:
-#   1. save-all flush  — force a full world flush to disk
-#   2. sleep 10        — wait for flush to complete (Saved the game log line)
-#   3. stop            — send the stop command to the server
+#   1. save-all flush  - force a full world flush to disk
+#   2. sleep 10        - wait for flush to complete (Saved the game log line)
+#   3. stop            - send the stop command to the server
 # TimeoutStopSec=90 gives the server time to save and exit cleanly.
 ExecStop=/bin/sh -c 'printf "save-all flush\n" > /run/minecraft/stdin; sleep 10; printf "stop\n" > /run/minecraft/stdin'
 
 TimeoutStopSec=90
 
-# Restart on crash (non-zero exit). A clean /stop exits with code 0 — no restart.
+# Restart on crash (non-zero exit). A clean /stop exits with code 0 - no restart.
 Restart=on-failure
 RestartSec=30
 

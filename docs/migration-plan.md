@@ -76,7 +76,7 @@ sudo /usr/local/bin/restore.sh --backup-key minecraft-backup-import.tar.gz
 
 `restore.sh` validates the archive and stages it before touching anything live (see
 [backup-and-restore.md](backup-and-restore.md#restore-procedure)), and requires it to
-contain a world directory matching the instance's current `level-name` — this is why
+contain a world directory matching the instance's current `level-name` - this is why
 Step 1 says to adjust the world directory names to match. If the imported world fails
 to start cleanly, the script automatically rolls back to whatever was running before
 the import, so a bad import archive can't leave the server down.
@@ -201,7 +201,7 @@ aws ec2 attach-volume \
 ```
 
 The bootstrap script (`install.sh`) will detect the existing filesystem (via `blkid`),
-skip formatting, and mount the volume by UUID — preserving all world data.
+skip formatting, and mount the volume by UUID - preserving all world data.
 
 ---
 
@@ -231,7 +231,7 @@ cd infra && npx cdk destroy
 EIP_ALLOC=<EipAllocationId output>
 aws ec2 release-address --allocation-id "${EIP_ALLOC}" --region us-west-2
 
-# 6. Optionally delete the EBS volume (irreversible — confirm world data is backed up)
+# 6. Optionally delete the EBS volume (irreversible - confirm world data is backed up)
 aws ec2 delete-volume --volume-id <EbsVolumeId> --region us-west-2
 
 # 7. Optionally empty and delete the S3 bucket

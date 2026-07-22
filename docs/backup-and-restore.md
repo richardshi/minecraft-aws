@@ -24,9 +24,9 @@ is named something other than `world`, the backup script handles it automaticall
 
 ### What is NOT Backed Up
 
-- `server.jar` — re-downloaded from Mojang during bootstrap
-- Logs — available in CloudWatch Logs (30-day retention)
-- The EBS volume snapshot — not automated in v1
+- `server.jar` - re-downloaded from Mojang during bootstrap
+- Logs - available in CloudWatch Logs (30-day retention)
+- The EBS volume snapshot - not automated in v1
 
 ### Backup Location
 
@@ -68,7 +68,7 @@ BACKUP_SUCCESS: s3://bucket/minecraft-backup-20260101-120000.tar.gz (12345678 by
 BACKUP_FAILED: world flush timed out after 30s
 BACKUP_FAILED: S3 object verification failed
 BACKUP_FAILED: another backup is already running
-INFO: minecraft.service is not active — skipping backup
+INFO: minecraft.service is not active - skipping backup
 ```
 
 A CloudWatch alarm (`MinecraftBackupFailure`) triggers when a `BACKUP_FAILED` line
@@ -98,7 +98,7 @@ aws s3 ls s3://${BACKUP_BUCKET}/ | grep minecraft-backup | sort
 # Via SSM Session Manager
 aws ssm start-session --target <InstanceId>
 
-# Trigger via systemd (recommended — uses the same environment as the timer)
+# Trigger via systemd (recommended - uses the same environment as the timer)
 sudo systemctl start minecraft-backup.service
 
 # Or run the script directly as the minecraft user
@@ -155,7 +155,7 @@ sudo /usr/local/bin/restore.sh
 # Or specify a backup key directly
 sudo /usr/local/bin/restore.sh --backup-key minecraft-backup-20260101-120000.tar.gz
 
-# Dry run — prints all steps without making changes
+# Dry run - prints all steps without making changes
 sudo /usr/local/bin/restore.sh --dry-run
 ```
 
@@ -165,9 +165,9 @@ The script:
 3. Validates it's a well-formed `tar.gz` (`minecraft.service` is not touched yet)
 4. Extracts it into a staging directory (`/opt/minecraft/.restore-staging`, on the
    same volume as the live world) and verifies it actually contains the expected
-   world directory — still no live data touched, so the server keeps running while
+   world directory - still no live data touched, so the server keeps running while
    a bad backup is downloaded, validated, and staged
-5. Stops `minecraft.service` — the first point of any real downtime
+5. Stops `minecraft.service` - the first point of any real downtime
 6. Renames the current world directories to `world.pre-restore.<timestamp>` (preserved)
 7. Moves the staged world into place
 8. Starts `minecraft.service`
@@ -179,7 +179,7 @@ The script:
 
 Because steps 1-4 never touch the live world or the running server, an invalid or
 empty backup is caught with zero downtime. Only steps 5-9 involve stopping the
-server, and 8-9 are the only steps that can trigger the automatic rollback — that's
+server, and 8-9 are the only steps that can trigger the automatic rollback - that's
 also the point at which a `world.pre-restore.*` copy first exists to roll back to.
 
 ### Post-Restore Verification

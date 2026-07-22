@@ -51,7 +51,7 @@ aws ec2 start-instances --instance-ids <InstanceId>
 aws ec2 wait instance-running --instance-ids <InstanceId>
 
 # The Minecraft service starts automatically via systemd.
-# Allow ~60–90 seconds for the JVM to fully start.
+# Allow ~60-90 seconds for the JVM to fully start.
 
 # Confirm the Elastic IP (it does not change)
 aws cloudformation describe-stacks \
@@ -107,7 +107,7 @@ systemctl status minecraft.service
 ### Bootstrap Verification Checklist
 
 After first boot (or after re-running the installer), verify all components started
-correctly. CloudFormation reporting success does **not** prove bootstrap succeeded —
+correctly. CloudFormation reporting success does **not** prove bootstrap succeeded -
 check the marker file.
 
 ```bash

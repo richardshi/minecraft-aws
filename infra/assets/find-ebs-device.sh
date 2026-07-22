@@ -1,5 +1,5 @@
 #!/bin/bash
-# find-ebs-device.sh — Resolve an EBS Volume ID to its NVMe block device path.
+# find-ebs-device.sh - Resolve an EBS Volume ID to its NVMe block device path.
 #
 # On Nitro-based EC2 instances (t3.*), EBS volumes appear as NVMe devices
 # (/dev/nvme0n1, /dev/nvme1n1, etc.) regardless of the attachment device name
@@ -25,7 +25,7 @@ fi
 
 VOLUME_ID="$1"
 
-# Strip the "vol-" prefix for matching — the serial number format in sysfs
+# Strip the "vol-" prefix for matching - the serial number format in sysfs
 # may encode it differently across kernel versions.
 VOLUME_ID_BARE="${VOLUME_ID#vol-}"
 

@@ -1,24 +1,24 @@
 #!/bin/bash
-# backup.sh — Minecraft hourly world backup.
+# backup.sh - Minecraft hourly world backup.
 #
 # Triggered by minecraft-backup.timer (systemd). Can also be run manually.
 #
 # Backup sequence:
-#   1. Check minecraft.service is active — exit cleanly if not.
+#   1. Check minecraft.service is active - exit cleanly if not.
 #   2. Acquire flock to prevent overlapping backups.
 #   3. Install EXIT trap to send "save-on" unconditionally on exit.
 #   4. Read level-name from server.properties.
 #   5. Send "save-off" then "save-all flush" via the FIFO console.
 #   6. Poll server.log for "Saved the game" confirmation (30-second timeout).
-#   7. Stream tar archive directly to S3 — no disk staging.
+#   7. Stream tar archive directly to S3 - no disk staging.
 #   8. Verify upload via head-object (presence check, not integrity validation).
-#   9. Prune backups beyond retention count — only on success.
+#   9. Prune backups beyond retention count - only on success.
 #  10. EXIT trap fires "save-on" unconditionally.
 #
 # Required environment variables (set in /opt/minecraft/minecraft-env):
-#   BACKUP_BUCKET      — S3 bucket name
-#   BACKUP_RETENTION   — number of backups to keep (default: 5)
-#   AWS_DEFAULT_REGION — AWS region
+#   BACKUP_BUCKET      - S3 bucket name
+#   BACKUP_RETENTION   - number of backups to keep (default: 5)
+#   AWS_DEFAULT_REGION - AWS region
 
 set -euo pipefail
 
@@ -44,10 +44,10 @@ log() {
 }
 
 # ---- Guard: check minecraft.service is active --------------------------------
-# Exit cleanly (exit 0) if the server is not running — the timer fires even
+# Exit cleanly (exit 0) if the server is not running - the timer fires even
 # when the instance is running but the server is down for maintenance.
 if ! systemctl is-active --quiet minecraft.service; then
-  log "INFO: minecraft.service is not active — skipping backup"
+  log "INFO: minecraft.service is not active - skipping backup"
   exit 0
 fi
 
@@ -62,7 +62,7 @@ if ! flock -n 9; then
 fi
 
 # ---- EXIT trap: always re-enable auto-saves ----------------------------------
-# This fires on any exit — success, failure, or signal.
+# This fires on any exit - success, failure, or signal.
 # The write to the FIFO uses a 5-second timeout so it never blocks indefinitely
 # if there is no reader (e.g. the server has already stopped).
 # The write is best-effort: if there is no reader the write will block briefly
@@ -121,7 +121,7 @@ declare -a TAR_PATHS=()
 # Required config files
 [[ -f "${MINECRAFT_DIR}/server.properties" ]]       && TAR_PATHS+=("server.properties")
 
-# Optional files — included only if present
+# Optional files - included only if present
 [[ -f "${MINECRAFT_DIR}/whitelist.json" ]]          && TAR_PATHS+=("whitelist.json")
 [[ -f "${MINECRAFT_DIR}/ops.json" ]]                && TAR_PATHS+=("ops.json")
 [[ -f "${MINECRAFT_DIR}/banned-players.json" ]]     && TAR_PATHS+=("banned-players.json")
@@ -134,7 +134,7 @@ fi
 
 log "INFO: archiving: ${TAR_PATHS[*]}"
 
-# ---- Stream tar directly to S3 — no disk staging ----------------------------
+# ---- Stream tar directly to S3 - no disk staging ----------------------------
 KEY="${S3_PREFIX}-$(date -u +%Y%m%d-%H%M%S).tar.gz"
 
 log "INFO: uploading to s3://${BUCKET}/${KEY}"
@@ -168,7 +168,7 @@ fi
 
 log "INFO: upload verified (ContentLength=${CONTENT_LENGTH} bytes)"
 
-# ---- Prune old backups — only on successful upload --------------------------
+# ---- Prune old backups - only on successful upload --------------------------
 # List all backup objects, sort oldest-first, delete any beyond retention count.
 log "INFO: pruning backups (retention=${RETENTION})"
 

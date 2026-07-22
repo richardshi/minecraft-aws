@@ -1,7 +1,7 @@
 [Unit]
 Description=Minecraft Hourly Backup
 Documentation=file:///usr/local/bin/backup.sh
-# Run after (not requiring) the Minecraft service — backup.sh checks if
+# Run after (not requiring) the Minecraft service - backup.sh checks if
 # minecraft.service is active and exits cleanly if it is not.
 After=minecraft.service
 

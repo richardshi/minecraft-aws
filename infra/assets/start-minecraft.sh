@@ -1,5 +1,5 @@
 #!/bin/bash
-# start-minecraft.sh — Minecraft server FIFO wrapper.
+# start-minecraft.sh - Minecraft server FIFO wrapper.
 #
 # This script is called by minecraft.service as ExecStart.
 #

@@ -19,7 +19,7 @@ the system must do and what constraints it must satisfy.
 - SSH (port 22) is never exposed. Administration uses AWS Systems Manager Session Manager.
 - The Minecraft whitelist is enabled (`white-list=true`, `enforce-whitelist=true`).
 - Only approved Minecraft player accounts (identified by username and UUID) can join.
-- Whitelist entries are managed via Minecraft server console commands — no file editing
+- Whitelist entries are managed via Minecraft server console commands - no file editing
   or server restart required. See [operations.md](operations.md).
 
 ### 2. Manual Server Start and Stop
@@ -31,9 +31,9 @@ the system must do and what constraints it must satisfy.
 - The EBS data volume and world data are preserved while the instance is stopped.
 - The EC2 instance is configured with `instanceInitiatedShutdownBehavior=stop`
   so an OS-level shutdown or reboot stops the instance rather than terminating it.
-- The EBS volume has `RemovalPolicy.RETAIN`, and — because it is attached
+- The EBS volume has `RemovalPolicy.RETAIN`, and - because it is attached
   out-of-band via `CfnVolumeAttachment` rather than declared in the instance's
-  block device mapping — it is never deleted on instance termination. Together
+  block device mapping - it is never deleted on instance termination. Together
   these survive both `cdk destroy` and accidental instance termination.
 - Exact start, stop, status, and connection commands are documented in [operations.md](operations.md).
 
@@ -46,7 +46,7 @@ the system must do and what constraints it must satisfy.
   console FIFO, then waits for `"Saved the game"` in the server log.
 - The `save-on` command is sent unconditionally on exit (via a bash `trap`), even
   if the backup fails.
-- Backups are streamed directly to S3 using `tar | aws s3 cp` — no temporary files
+- Backups are streamed directly to S3 using `tar | aws s3 cp` - no temporary files
   are written to the data volume.
 - Each backup archive includes: world data (all dimension directories), `server.properties`,
   `whitelist.json`, `ops.json`, `banned-players.json`, `banned-ips.json` (all that exist).
@@ -89,7 +89,7 @@ All tunable parameters are defined in `infra/config/server-config.ts`:
 - Backup retention count
 - Log retention days
 - Monthly budget threshold (`monthlyBudgetUsd`). The alert email itself is
-  *not* part of this file or any local config — see "Budget Alert Email" below
+  *not* part of this file or any local config - see "Budget Alert Email" below
 - EULA acceptance flag
 - Optional DNS hostname and hosted zone ID
 
@@ -99,7 +99,7 @@ The budget alert email address is deliberately kept out of source, config files,
 and `.env` files. It's stored in AWS Systems Manager Parameter Store as a
 standard `String` parameter, `/minecraft/budget-alert-email`, and referenced
 from `infra/lib/minecraft-stack.ts` via a CloudFormation dynamic reference
-(`{{resolve:ssm:...}}`). CloudFormation resolves it at deploy time — the real
+(`{{resolve:ssm:...}}`). CloudFormation resolves it at deploy time - the real
 address never appears in the synthesized template, in `cdk.out/`, or in
 `describe-stacks` output.
 
@@ -111,7 +111,7 @@ aws ssm put-parameter --name /minecraft/budget-alert-email \
 ```
 
 To change the alert address later, overwrite the parameter (`--overwrite`) and
-redeploy — no code change is needed.
+redeploy - no code change is needed.
 
 ---
 
@@ -131,7 +131,7 @@ redeploy — no code change is needed.
 ## Assumptions and Constraints
 
 - Minecraft Java Edition 26.1.2 requires Java 25 (Amazon Corretto 25).
-- The server is intended for a small group (2–10 players). The `t3.medium` instance
+- The server is intended for a small group (2-10 players). The `t3.medium` instance
   type is appropriate for this scale.
 - No load balancer, ECS, EKS, GameLift, or multiple EC2 instances are used.
 - DNS is optional. If `dnsHostname` and `hostedZoneId` are both set in config, a

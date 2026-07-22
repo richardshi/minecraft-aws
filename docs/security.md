@@ -5,11 +5,11 @@
 - **No public SSH**: The instance has no inbound SSH rule. All administration uses
   AWS Systems Manager Session Manager over HTTPS.
 - **Least-privilege IAM**: The instance role grants only the specific permissions
-  needed — SSM, scoped S3, scoped CloudWatch Logs. No wildcard resources or actions.
+  needed - SSM, scoped S3, scoped CloudWatch Logs. No wildcard resources or actions.
 - **Encryption at rest**: The EBS data volume is encrypted. The S3 backup bucket uses
   SSE-S3 encryption. Both are enforced at the CDK resource level.
 - **Encryption in transit**: The S3 bucket policy denies any request that does not use
-  HTTPS (`aws:SecureTransport: false` → `Deny`).
+  HTTPS (`aws:SecureTransport: false` -> `Deny`).
 - **No secrets in Git**: AWS credentials, RCON passwords, world files, and player data
   are never committed. The `.gitignore` enforces this.
 
@@ -45,7 +45,7 @@ No bastion host or SSH key is needed. To open an interactive shell:
 aws ssm start-session --target <instance-id> --region us-west-2
 
 # Or use the AWS Console:
-# EC2 → Instances → Select instance → Connect → Session Manager → Connect
+# EC2 -> Instances -> Select instance -> Connect -> Session Manager -> Connect
 ```
 
 The instance role includes `AmazonSSMManagedInstanceCore`, which grants the SSM agent
@@ -94,7 +94,7 @@ be removed after volume creation.
 
 The backup bucket has the following protections:
 
-- `BlockPublicAccess.BLOCK_ALL` — no public access under any circumstances
+- `BlockPublicAccess.BLOCK_ALL` - no public access under any circumstances
 - SSE-S3 encryption on all objects
 - Bucket policy denying requests that do not use HTTPS (`enforceSSL: true` in CDK)
 - No bucket versioning (backups use timestamped keys; versioning adds cost without benefit)
@@ -114,7 +114,7 @@ enforce-whitelist=true
 
 `enforce-whitelist=true` removes connected players who are not on the whitelist
 when the whitelist is reloaded. `online-mode=true` requires Minecraft accounts to
-be authenticated by Mojang — players cannot connect with cracked/offline accounts.
+be authenticated by Mojang - players cannot connect with cracked/offline accounts.
 
 Managing the whitelist does not require editing files or restarting the server.
 See [operations.md](operations.md) for commands.
@@ -139,11 +139,11 @@ in your local working copy. Do not commit this change to version control.
 - No RCON password is configured (RCON is disabled).
 - No Minecraft server password is configured (`online-mode=true` uses Mojang auth).
 - No SSH keys are generated or stored.
-- AWS credentials are provided to the instance via the IAM instance role — no
+- AWS credentials are provided to the instance via the IAM instance role - no
   long-term credentials are stored on disk or in environment variables.
 - The `.gitignore` excludes `.env`, `*.pem`, `credentials`, and similar files.
 - The budget alert email address lives in AWS Systems Manager Parameter Store
-  (`/minecraft/budget-alert-email`), not in source or `.env` — see
+  (`/minecraft/budget-alert-email`), not in source or `.env` - see
   [requirements.md](requirements.md#budget-alert-email) for setup. It's
   referenced via a CloudFormation dynamic reference, so the resolved value
   never appears in the synthesized template or in `describe-stacks` output.
@@ -154,5 +154,5 @@ in your local working copy. Do not commit this change to version control.
 
 The CDK bootstrap process creates an S3 bucket for CDK assets (the bootstrap tarball).
 This bucket is managed by CDK and is not accessible to the public. The instance role
-has `s3:GetObject` scoped to the specific asset object key — it cannot list or read
+has `s3:GetObject` scoped to the specific asset object key - it cannot list or read
 other objects in the bucket.

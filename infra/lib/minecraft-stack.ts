@@ -29,7 +29,7 @@ export class MinecraftStack extends cdk.Stack {
     this.terminationProtection = true;
 
     // =========================================================================
-    // Task 2 — VPC, security group, AZ selection
+    // Task 2 - VPC, security group, AZ selection
     // =========================================================================
 
     // Single public subnet, no NAT gateway (no cost for NAT).
@@ -46,12 +46,12 @@ export class MinecraftStack extends cdk.Stack {
       ],
     });
 
-    // The single public subnet — used for both the instance and the EBS volume AZ.
+    // The single public subnet - used for both the instance and the EBS volume AZ.
     const publicSubnet = vpc.publicSubnets[0];
 
     const securityGroup = new ec2.SecurityGroup(this, 'MinecraftSg', {
       vpc,
-      description: 'Minecraft server security group — inbound TCP 25565 only',
+      description: 'Minecraft server security group - inbound TCP 25565 only',
       allowAllOutbound: true, // Required for SSM, S3, Mojang JAR download
     });
 
@@ -63,7 +63,7 @@ export class MinecraftStack extends cdk.Stack {
     );
 
     // =========================================================================
-    // Task 4 — Encrypted EBS volume and S3 backup bucket
+    // Task 4 - Encrypted EBS volume and S3 backup bucket
     // =========================================================================
 
     // EBS volume pinned to the same AZ as the public subnet.
@@ -90,12 +90,12 @@ export class MinecraftStack extends cdk.Stack {
     });
 
     // =========================================================================
-    // Task 3 — IAM role (least privilege)
+    // Task 3 - IAM role (least privilege)
     // =========================================================================
 
     const instanceRole = new iam.Role(this, 'MinecraftInstanceRole', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-      description: 'Minecraft EC2 instance role — SSM, S3 backup, CloudWatch Logs',
+      description: 'Minecraft EC2 instance role - SSM, S3 backup, CloudWatch Logs',
     });
 
     // SSM Session Manager (no SSH required)
@@ -103,7 +103,7 @@ export class MinecraftStack extends cdk.Stack {
       iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
     );
 
-    // S3 backup bucket access — scoped to this bucket only
+    // S3 backup bucket access - scoped to this bucket only
     instanceRole.addToPolicy(
       new iam.PolicyStatement({
         sid: 'MinecraftBackupBucketAccess',
@@ -125,7 +125,7 @@ export class MinecraftStack extends cdk.Stack {
       }),
     );
 
-    // CloudWatch Logs — scoped to /minecraft/* log groups
+    // CloudWatch Logs - scoped to /minecraft/* log groups
     const logGroupArnPrefix = `arn:aws:logs:${this.region}:${this.account}:log-group:/minecraft`;
     instanceRole.addToPolicy(
       new iam.PolicyStatement({
@@ -159,11 +159,11 @@ export class MinecraftStack extends cdk.Stack {
     );
 
     // =========================================================================
-    // Task 5 — CDK S3 asset (bootstrap tarball)
+    // Task 5 - CDK S3 asset (bootstrap tarball)
     // =========================================================================
 
     // All instance-side files are packaged as a versioned S3 asset.
-    // User-data downloads and runs the asset — stays well under 16 KB.
+    // User-data downloads and runs the asset - stays well under 16 KB.
     const bootstrapAsset = new s3assets.Asset(this, 'BootstrapAsset', {
       path: path.join(__dirname, '../assets'),
     });
@@ -171,7 +171,7 @@ export class MinecraftStack extends cdk.Stack {
     // Grant the instance role read access to only this asset's object key.
     // Asset.grantRead() grants s3:GetBucket*/GetObject*/List* on the *entire*
     // CDK bootstrap-assets bucket (every asset from every stack ever published
-    // under this account/region's CDK qualifier) — it does not scope to the
+    // under this account/region's CDK qualifier) - it does not scope to the
     // object key. Use an explicit statement scoped to the exact object ARN instead.
     instanceRole.addToPolicy(
       new iam.PolicyStatement({
@@ -183,7 +183,7 @@ export class MinecraftStack extends cdk.Stack {
     );
 
     // =========================================================================
-    // Task 10 — CloudWatch log groups, metric filters, alarms, and budget
+    // Task 10 - CloudWatch log groups, metric filters, alarms, and budget
     // =========================================================================
 
     const serverLogGroup = new logs.LogGroup(this, 'MinecraftServerLogGroup', {
@@ -223,7 +223,7 @@ export class MinecraftStack extends cdk.Stack {
 
     // Budget alert email is never stored in source or config. It's read from
     // an existing SSM parameter via a CloudFormation dynamic reference
-    // ({{resolve:ssm:...}}), resolved by CloudFormation at deploy time — the
+    // ({{resolve:ssm:...}}), resolved by CloudFormation at deploy time - the
     // real address never appears in the synthesized template, in source, or
     // in `describe-stacks` output (unlike AWS::SSM::Parameter::Value<String>
     // template parameters, dynamic references aren't echoed back anywhere).
@@ -283,7 +283,7 @@ export class MinecraftStack extends cdk.Stack {
     });
 
     // =========================================================================
-    // Task 11 — Elastic IP and optional Route 53 DNS
+    // Task 11 - Elastic IP and optional Route 53 DNS
     // =========================================================================
 
     // Allocate a static Elastic IP.
@@ -295,7 +295,7 @@ export class MinecraftStack extends cdk.Stack {
     });
     eip.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-    // Optional Route 53 A record — only created when both fields are set
+    // Optional Route 53 A record - only created when both fields are set
     if (config.dnsHostname && config.hostedZoneId) {
       const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
         this,
@@ -315,7 +315,7 @@ export class MinecraftStack extends cdk.Stack {
     }
 
     // =========================================================================
-    // Task 12 — EC2 instance, volume attachment, EIP association, outputs
+    // Task 12 - EC2 instance, volume attachment, EIP association, outputs
     // =========================================================================
 
     // Build user-data: minimal script that downloads and runs the bootstrap asset.
@@ -337,12 +337,12 @@ export class MinecraftStack extends cdk.Stack {
       `export BACKUP_BUCKET="${backupBucket.bucketName}"`,
       `export BACKUP_RETENTION="${config.backupRetentionCount}"`,
       `export AWS_DEFAULT_REGION="${this.region}"`,
-      // Volume ID is not known until synth time — use CloudFormation Ref via token
+      // Volume ID is not known until synth time - use CloudFormation Ref via token
       `export EBS_VOLUME_ID="${dataVolume.volumeId}"`,
       '',
       // No separate checksum step: ASSET_KEY is itself content-addressed (a hash
       // of the source), the download is over TLS, and the instance role can only
-      // read this exact object key (see MinecraftBootstrapAssetAccess policy) —
+      // read this exact object key (see MinecraftBootstrapAssetAccess policy) -
       // together these already give integrity and authenticity. A prior version
       // of this script compared against bootstrapAsset.assetHash, but that value
       // is CDK's own directory-fingerprint (used to name the S3 key), not the
@@ -367,19 +367,19 @@ export class MinecraftStack extends cdk.Stack {
       securityGroup,
       role: instanceRole,
       userData,
-      // Disable auto-assigned public IP — the Elastic IP is the public address
+      // Disable auto-assigned public IP - the Elastic IP is the public address
       associatePublicIpAddress: false,
       userDataCausesReplacement: false,
       requireImdsv2: true,
     });
 
-    // instanceInitiatedShutdownBehavior: stop — OS shutdown/reboot stops the
+    // instanceInitiatedShutdownBehavior: stop - OS shutdown/reboot stops the
     // instance rather than terminating it. Protects against accidental data loss.
     const cfnInstance = instance.node.defaultChild as ec2.CfnInstance;
     cfnInstance.instanceInitiatedShutdownBehavior = 'stop';
 
     // Attach the EBS data volume using a CloudFormation VolumeAttachment resource.
-    // This is a deploy-time control-plane operation — the instance role does NOT
+    // This is a deploy-time control-plane operation - the instance role does NOT
     // need ec2:AttachVolume permissions.
     const volumeAttachment = new ec2.CfnVolumeAttachment(this, 'MinecraftVolumeAttachment', {
       instanceId: instance.instanceId,
@@ -394,7 +394,7 @@ export class MinecraftStack extends cdk.Stack {
     instance.node.addDependency(dataVolume);
 
     // Only the root volume is declared here. The data volume is deliberately
-    // absent from this list — it is attached separately above via
+    // absent from this list - it is attached separately above via
     // CfnVolumeAttachment (an out-of-band AttachVolume, not part of the
     // instance's launch-time block device mapping). EBS volumes attached that
     // way are never deleted on instance termination; DeleteOnTermination only
@@ -404,7 +404,7 @@ export class MinecraftStack extends cdk.Stack {
     // instance termination and cdk destroy.
     cfnInstance.blockDeviceMappings = [
       {
-        // Root volume — keep default size, just ensure no accidental termination delete
+        // Root volume - keep default size, just ensure no accidental termination delete
         deviceName: '/dev/xvda',
         ebs: {
           deleteOnTermination: true, // Root volume is ephemeral, fine to delete
@@ -421,7 +421,7 @@ export class MinecraftStack extends cdk.Stack {
     });
     eipAssociation.node.addDependency(instance);
 
-    // CPU utilization alarm — built from a CloudWatch Metric scoped to this instance
+    // CPU utilization alarm - built from a CloudWatch Metric scoped to this instance
     const cpuAlarm = new cloudwatch.Alarm(this, 'CpuHighAlarm', {
       alarmName: 'MinecraftCpuHigh',
       alarmDescription: 'Minecraft EC2 CPU utilization > 90% for 15 minutes',
@@ -444,7 +444,7 @@ export class MinecraftStack extends cdk.Stack {
 
     new CfnOutput(this, 'ElasticIpAddress', {
       value: eip.ref,
-      description: 'Elastic IP address — stable across EC2 stop/start cycles',
+      description: 'Elastic IP address - stable across EC2 stop/start cycles',
     });
 
     new CfnOutput(this, 'EipAllocationId', {

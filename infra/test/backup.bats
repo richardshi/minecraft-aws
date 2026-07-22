@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# backup.bats — Tests for infra/assets/backup.sh
+# backup.bats - Tests for infra/assets/backup.sh
 #
 # Mocks the filesystem, FIFO, S3 CLI, and systemctl so no AWS access or
 # running Minecraft server is required.
@@ -38,11 +38,11 @@ setup() {
   # Minimal server.properties
   printf 'level-name=world\nserver-port=25565\n' > "${MINECRAFT_DIR}/server.properties"
 
-  # Create FIFO — backup.sh writes console commands here.
+  # Create FIFO - backup.sh writes console commands here.
   # A fresh reader is opened by run_backup() before each invocation.
   mkfifo "${FIFO}"
 
-  # AWS mock — writes to a log and simulates S3 using the filesystem.
+  # AWS mock - writes to a log and simulates S3 using the filesystem.
   # Uses double-quoted heredoc so TEST_DIR, MOCK_S3 expand at write time.
   cat > "${BIN_DIR}/aws" <<AWS_MOCK
 #!/bin/bash
@@ -100,7 +100,7 @@ esac
 AWS_MOCK
   chmod +x "${BIN_DIR}/aws"
 
-  # systemctl mock — default: minecraft.service is active
+  # systemctl mock - default: minecraft.service is active
   cat > "${BIN_DIR}/systemctl" <<SYSTEMCTL_MOCK
 #!/bin/bash
 exit \${SYSTEMCTL_IS_ACTIVE_EXIT:-0}
@@ -140,7 +140,7 @@ run_backup() {
   local reader_pid=$!
   local flush_pid=""
 
-  # Now open a persistent writer fd — keeps the write-end open so individual
+  # Now open a persistent writer fd - keeps the write-end open so individual
   # printf writes in backup.sh complete immediately without blocking, and
   # the cat reader above doesn't see spurious EOF between writes.
   exec 8>"${FIFO}"
@@ -182,7 +182,7 @@ create_mock_backups() {
 }
 
 # ---------------------------------------------------------------------------
-# 1. Service not active — exit cleanly
+# 1. Service not active - exit cleanly
 # ---------------------------------------------------------------------------
 
 @test "exits 0 cleanly when minecraft.service is not active" {
@@ -198,7 +198,7 @@ create_mock_backups() {
 }
 
 # ---------------------------------------------------------------------------
-# 2. Flush timeout — no upload, save-on fired, exit non-zero
+# 2. Flush timeout - no upload, save-on fired, exit non-zero
 # ---------------------------------------------------------------------------
 
 @test "fails with non-zero exit when world flush times out" {
@@ -239,7 +239,7 @@ create_mock_backups() {
 }
 
 # ---------------------------------------------------------------------------
-# 3. Upload failure — no pruning, save-on fired, exit non-zero
+# 3. Upload failure - no pruning, save-on fired, exit non-zero
 # ---------------------------------------------------------------------------
 
 @test "fails with non-zero exit when S3 upload fails" {
@@ -275,7 +275,7 @@ create_mock_backups() {
 }
 
 # ---------------------------------------------------------------------------
-# 4. Upload verification failure — no pruning, exit non-zero
+# 4. Upload verification failure - no pruning, exit non-zero
 # ---------------------------------------------------------------------------
 
 @test "fails with non-zero exit when head-object returns zero size" {
@@ -389,7 +389,7 @@ create_mock_backups() {
 
 @test "prunes oldest backups to the retention count after a successful backup" {
   simulate_flush_success
-  create_mock_backups 6   # 6 existing + 1 new = 7, retention=5 → prune to 5
+  create_mock_backups 6   # 6 existing + 1 new = 7, retention=5 -> prune to 5
   run_backup
   [ "$status" -eq 0 ]
   local count

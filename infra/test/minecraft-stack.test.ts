@@ -24,7 +24,7 @@ describe('Server Config', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 2 — VPC and Security Group
+// Task 2 - VPC and Security Group
 // ---------------------------------------------------------------------------
 
 describe('Security Group', () => {
@@ -96,7 +96,7 @@ describe('VPC', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 3 — IAM Role
+// Task 3 - IAM Role
 // ---------------------------------------------------------------------------
 
 describe('IAM Role', () => {
@@ -174,7 +174,7 @@ describe('IAM Role', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 4 — EBS Volume and S3 Bucket
+// Task 4 - EBS Volume and S3 Bucket
 // ---------------------------------------------------------------------------
 
 describe('EBS Volume', () => {
@@ -267,7 +267,7 @@ describe('S3 Backup Bucket', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 5 — CDK Asset
+// Task 5 - CDK Asset
 // ---------------------------------------------------------------------------
 
 describe('Bootstrap Asset', () => {
@@ -289,11 +289,11 @@ describe('Bootstrap Asset', () => {
 
     expect(assetStatement).toBeDefined();
     expect(assetStatement!.Effect).toBe('Allow');
-    // Exactly s3:GetObject — not GetObject*, not a list of actions.
+    // Exactly s3:GetObject - not GetObject*, not a list of actions.
     expect(assetStatement!.Action).toBe('s3:GetObject');
 
     // Resource must resolve to a single object key ARN (ends in ".zip"), never
-    // the bare bucket ARN or a "/*" wildcard — otherwise the instance could
+    // the bare bucket ARN or a "/*" wildcard - otherwise the instance could
     // read every asset in the shared CDK bootstrap-assets bucket.
     const resourceJson = JSON.stringify(assetStatement!.Resource);
     expect(resourceJson).toMatch(/\.zip"/);
@@ -302,7 +302,7 @@ describe('Bootstrap Asset', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 10 — CloudWatch Log Groups, Alarms, Budget
+// Task 10 - CloudWatch Log Groups, Alarms, Budget
 // ---------------------------------------------------------------------------
 
 describe('CloudWatch Log Groups', () => {
@@ -379,7 +379,7 @@ describe('Budget', () => {
     });
   });
 
-  test('every subscriber (80% and 100% thresholds) uses the same dynamic reference — none is a literal address', () => {
+  test('every subscriber (80% and 100% thresholds) uses the same dynamic reference - none is a literal address', () => {
     const budgets = template.findResources('AWS::Budgets::Budget');
     const budgetKeys = Object.keys(budgets);
     expect(budgetKeys).toHaveLength(1);
@@ -391,7 +391,7 @@ describe('Budget', () => {
     expect(notifications).toHaveLength(2);
 
     // ...and every single subscriber across both must be the dynamic
-    // reference — never a literal string (e.g. a hardcoded/placeholder email).
+    // reference - never a literal string (e.g. a hardcoded/placeholder email).
     const allAddresses = notifications.flatMap(n => n.Subscribers.map(s => s.Address));
     expect(allAddresses.length).toBeGreaterThan(0);
     for (const address of allAddresses) {
@@ -429,7 +429,7 @@ describe('Budget', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 11 — Elastic IP
+// Task 11 - Elastic IP
 // ---------------------------------------------------------------------------
 
 describe('Elastic IP', () => {
@@ -466,7 +466,7 @@ describe('Elastic IP', () => {
   });
 });
 
-describe('DNS record — disabled by default', () => {
+describe('DNS record - disabled by default', () => {
   test('no Route53 record when dnsHostname and hostedZoneId are empty', () => {
     const template = makeStack({ dnsHostname: '', hostedZoneId: '' });
     template.resourceCountIs('AWS::Route53::RecordSet', 0);
@@ -498,7 +498,7 @@ describe('DNS record — disabled by default', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 12 — EC2 Instance
+// Task 12 - EC2 Instance
 // ---------------------------------------------------------------------------
 
 describe('EC2 Instance', () => {

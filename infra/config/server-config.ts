@@ -1,18 +1,18 @@
 /**
  * Centralized configuration for the Minecraft AWS stack.
  *
- * IMPORTANT — EULA:
+ * IMPORTANT - EULA:
  *   minecraftEulaAccepted is intentionally false in this repository.
  *   Before deploying, you must read and accept the Minecraft End User
  *   License Agreement at https://aka.ms/MinecraftEULA, then set
  *   minecraftEulaAccepted to true in your local copy.
  *   Do NOT commit minecraftEulaAccepted: true to version control.
  *
- * NOTE — budgetAlertEmail:
+ * NOTE - budgetAlertEmail:
  *   Not part of this config. The real address lives in AWS Systems Manager
  *   Parameter Store (see infra/lib/minecraft-stack.ts, parameter
  *   "/minecraft/budget-alert-email") and is resolved by CloudFormation at
- *   deploy time via a dynamic reference — it never appears in source, in
+ *   deploy time via a dynamic reference - it never appears in source, in
  *   the synthesized template, or in `describe-stacks` output.
  */
 export interface ServerConfig {

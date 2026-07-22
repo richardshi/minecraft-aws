@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# restore.bats — Tests for infra/assets/restore.sh
+# restore.bats - Tests for infra/assets/restore.sh
 #
 # Mocks the filesystem, S3 CLI, systemctl, and chown so no AWS access, real
 # minecraft/root privileges, or running Minecraft server is required.
@@ -173,7 +173,7 @@ seed_ready_log() {
 }
 
 # ---------------------------------------------------------------------------
-# 2. Invalid archive — abort before touching minecraft.service
+# 2. Invalid archive - abort before touching minecraft.service
 # ---------------------------------------------------------------------------
 
 @test "aborts with non-zero exit when the archive is not a valid tar.gz" {
@@ -209,7 +209,7 @@ seed_ready_log() {
 }
 
 # ---------------------------------------------------------------------------
-# 3. Archive missing the expected world directory — abort before touching service
+# 3. Archive missing the expected world directory - abort before touching service
 # ---------------------------------------------------------------------------
 
 @test "aborts with non-zero exit when the archive has no world directory" {
@@ -244,12 +244,12 @@ seed_ready_log() {
 }
 
 # ---------------------------------------------------------------------------
-# 4. Server never reports ready — rollback on timeout
+# 4. Server never reports ready - rollback on timeout
 # ---------------------------------------------------------------------------
 
 @test "rolls back when the server never reports ready within the startup timeout" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
-  # SERVER_LOG stays empty — "Done (" never appears.
+  # SERVER_LOG stays empty - "Done (" never appears.
   export SYSTEMCTL_IS_ACTIVE_EXIT=0
 
   run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
@@ -307,7 +307,7 @@ seed_ready_log() {
 }
 
 # ---------------------------------------------------------------------------
-# 5. Service goes inactive right after start — rollback without waiting
+# 5. Service goes inactive right after start - rollback without waiting
 # ---------------------------------------------------------------------------
 
 @test "rolls back promptly (without waiting the full timeout) when the service goes inactive after start" {
@@ -327,7 +327,7 @@ seed_ready_log() {
 }
 
 # ---------------------------------------------------------------------------
-# 6. Dry run — no changes
+# 6. Dry run - no changes
 # ---------------------------------------------------------------------------
 
 @test "dry-run makes no changes to the live world" {

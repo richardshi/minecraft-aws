@@ -78,7 +78,7 @@ Minecraft Clients                    Admin (SSM Session Manager)
 - **Type**: `t3.medium` (2 vCPU, 4 GB RAM, Nitro-based)
 - **AMI**: Amazon Linux 2023 (latest, resolved at `cdk synth` time)
 - **Subnet**: Single public subnet (no NAT gateway)
-- **Public IP**: Elastic IP only — no auto-assigned public IP
+- **Public IP**: Elastic IP only - no auto-assigned public IP
 
 The instance is treated as **replaceable**. All persistent state lives on the EBS
 volume and S3 bucket, both of which survive instance replacement or termination.
@@ -105,8 +105,8 @@ prevent EOF when individual writers close), then `exec`s the JVM with stdin from
   reboots.
 - The volume is attached out-of-band via `CfnVolumeAttachment` rather than being
   listed in the instance's own block device mapping. `DeleteOnTermination` only
-  applies to volumes declared in that mapping — `CfnVolumeAttachment` has no such
-  property — so the data volume is never deleted when the instance terminates,
+  applies to volumes declared in that mapping - `CfnVolumeAttachment` has no such
+  property - so the data volume is never deleted when the instance terminates,
   regardless of how the instance is replaced or torn down.
 
 ### Bootstrap Asset
@@ -116,7 +116,7 @@ packaged as a versioned CDK S3 asset. The EC2 user-data script (under 1 KB) down
 and runs the installer. Integrity and authenticity come from the download being over
 TLS, from the object key itself being content-addressed (a hash of the asset's
 contents), and from the instance role being scoped to read only that exact object key
-(`MinecraftBootstrapAssetAccess`) — not from a separate checksum step. This keeps
+(`MinecraftBootstrapAssetAccess`) - not from a separate checksum step. This keeps
 user-data well under the 16 KB limit and allows updates without re-creating the
 instance (see [operations.md](operations.md)).
 
@@ -140,13 +140,13 @@ The allocation ID is a stack output (`EipAllocationId`).
 
 1. systemd timer fires every hour (`OnCalendar=hourly`)
 2. `backup.sh` checks `minecraft.service` is active
-3. Acquires `flock` — prevents overlapping runs
+3. Acquires `flock` - prevents overlapping runs
 4. Installs EXIT trap for `save-on`
 5. Sends `save-off` and `save-all flush` to the FIFO
 6. Polls `server.log` for `"Saved the game"` (30-second timeout)
-7. Streams `tar | aws s3 cp` — no disk staging
+7. Streams `tar | aws s3 cp` - no disk staging
 8. Verifies upload via `head-object` (presence check + non-zero ContentLength)
-9. Prunes backups beyond retention count (oldest first) — only on success
+9. Prunes backups beyond retention count (oldest first) - only on success
 10. EXIT trap fires: `save-on` sent unconditionally
 
 ---

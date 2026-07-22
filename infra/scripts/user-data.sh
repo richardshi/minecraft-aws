@@ -1,5 +1,5 @@
 #!/bin/bash
-# user-data.sh — Minimal EC2 user-data script.
+# user-data.sh - Minimal EC2 user-data script.
 #
 # This script is embedded in the EC2 instance user-data by the CDK stack.
 # It must remain well under the 16 KB EC2 user-data raw size limit.
@@ -14,7 +14,7 @@
 # injected by the CDK stack before this script runs.
 #
 # To update the bootstrap after a CDK asset change:
-#   See docs/operations.md — "Updating the bootstrap installer"
+#   See docs/operations.md - "Updating the bootstrap installer"
 
 set -euo pipefail
 
