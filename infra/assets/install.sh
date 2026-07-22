@@ -18,31 +18,65 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MINECRAFT_DIR="/opt/minecraft"
-MINECRAFT_USER="minecraft"
-LOG_DIR="/var/log/minecraft"
+MINECRAFT_DIR="${MINECRAFT_DIR:-/opt/minecraft}"
+MINECRAFT_USER="${MINECRAFT_USER:-minecraft}"
+LOG_DIR="${LOG_DIR:-/var/log/minecraft}"
 MARKER_FILE="${MINECRAFT_DIR}/.bootstrap-complete"
+FSTAB_FILE="${FSTAB_FILE:-/etc/fstab}"
+EBS_ATTACH_WAIT_SECONDS="${EBS_ATTACH_WAIT_SECONDS:-1800}"
+EBS_ATTACH_POLL_SECONDS="${EBS_ATTACH_POLL_SECONDS:-5}"
 
 log() {
   echo "[install.sh] $(date -u --iso-8601=seconds) $*"
 }
 
+get_imds_token() {
+  curl -fsS -X PUT \
+    -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' \
+    'http://169.254.169.254/latest/api/token'
+}
+
+metadata_get() {
+  local path="$1"
+  local token
+  token="$(get_imds_token 2>/dev/null || true)"
+  if [[ -n "${token}" ]]; then
+    curl -fsS -H "X-aws-ec2-metadata-token: ${token}" \
+      "http://169.254.169.254/latest/${path}" \
+      2>/dev/null || true
+  else
+    curl -fsS "http://169.254.169.254/latest/${path}" 2>/dev/null || true
+  fi
+}
+
+describe_volume_attachment() {
+  aws ec2 describe-volumes \
+    --volume-ids "${EBS_VOLUME_ID}" \
+    --region "${AWS_DEFAULT_REGION}" \
+    --query 'Volumes[0].Attachments[0].[InstanceId,State,Device]' \
+    --output text \
+    2>/dev/null || true
+}
+
 # ---- Guard: EULA acceptance --------------------------------------------------
 # The Minecraft EULA must be read and accepted before deploying:
 #   https://aka.ms/MinecraftEULA
-# Set minecraftEulaAccepted=true in infra/config/server-config.ts only after
-# you have read and accepted the EULA. Do not commit that change.
+# Set CDK_MINECRAFT_EULA_ACCEPTED=true at deploy time only after you have read
+# and accepted the EULA. The repository default remains false.
 if [[ "${MINECRAFT_EULA_ACCEPTED:-false}" != "true" ]]; then
   echo "ERROR: Minecraft EULA has not been accepted." >&2
-  echo "       Read https://aka.ms/MinecraftEULA, then set" >&2
-  echo "       minecraftEulaAccepted=true in infra/config/server-config.ts" >&2
-  echo "       Do not commit this change to version control." >&2
+  echo "       Read https://aka.ms/MinecraftEULA, then deploy with" >&2
+  echo "       CDK_MINECRAFT_EULA_ACCEPTED=true." >&2
   exit 1
 fi
 
 log "Starting Minecraft server installation"
 log "Minecraft version: ${MINECRAFT_VERSION}"
 log "EBS volume: ${EBS_VOLUME_ID}"
+INSTANCE_ID="$(metadata_get meta-data/instance-id)"
+if [[ -n "${INSTANCE_ID}" ]]; then
+  log "Current instance ID: ${INSTANCE_ID}"
+fi
 
 # ---- Java 25 (Amazon Corretto) -----------------------------------------------
 log "Installing Amazon Corretto 25..."
@@ -71,15 +105,31 @@ fi
 # ---- EBS volume: identify, format (if needed), mount ------------------------
 log "Identifying EBS device for volume ${EBS_VOLUME_ID}..."
 DEVICE=""
-for attempt in $(seq 1 180); do
-  if DEVICE=$("${SCRIPT_DIR}/find-ebs-device.sh" "${EBS_VOLUME_ID}" 2>/dev/null); then
+ATTEMPT_COUNT=$(( (EBS_ATTACH_WAIT_SECONDS + EBS_ATTACH_POLL_SECONDS - 1) / EBS_ATTACH_POLL_SECONDS ))
+for attempt in $(seq 1 "${ATTEMPT_COUNT}"); do
+  if DEVICE=$(bash "${SCRIPT_DIR}/find-ebs-device.sh" "${EBS_VOLUME_ID}" 2>/dev/null); then
     break
   fi
-  log "EBS device not visible yet (attempt ${attempt}/180), retrying in 2s..."
-  sleep 2
+  ATTACHMENT_INFO="$(describe_volume_attachment)"
+  read -r ATTACHED_INSTANCE_ID ATTACHMENT_STATE ATTACHMENT_DEVICE <<< "${ATTACHMENT_INFO}"
+  if [[ "${ATTACHED_INSTANCE_ID}" == "None" ]] || [[ -z "${ATTACHED_INSTANCE_ID}" ]]; then
+    log "EBS device not visible yet (attempt ${attempt}/${ATTEMPT_COUNT}). Control plane: volume is not attached. Retrying in ${EBS_ATTACH_POLL_SECONDS}s..."
+  elif [[ -n "${INSTANCE_ID}" && "${ATTACHED_INSTANCE_ID}" == "${INSTANCE_ID}" ]]; then
+    log "EBS device not visible yet (attempt ${attempt}/${ATTEMPT_COUNT}). Control plane: attached here as ${ATTACHMENT_DEVICE} (${ATTACHMENT_STATE}). Waiting for local NVMe device discovery..."
+    udevadm settle --timeout=5 >/dev/null 2>&1 || true
+  else
+    log "EBS device not visible yet (attempt ${attempt}/${ATTEMPT_COUNT}). Control plane: attached to instance ${ATTACHED_INSTANCE_ID} as ${ATTACHMENT_DEVICE} (${ATTACHMENT_STATE}). Retrying in ${EBS_ATTACH_POLL_SECONDS}s..."
+  fi
+  sleep "${EBS_ATTACH_POLL_SECONDS}"
 done
 
 if [[ -z "${DEVICE}" ]]; then
+  FINAL_ATTACHMENT_INFO="$(describe_volume_attachment)"
+  if [[ -n "${FINAL_ATTACHMENT_INFO}" ]]; then
+    log "Final EBS attachment state before timeout: ${FINAL_ATTACHMENT_INFO}"
+  fi
+  log "Local lsblk snapshot at timeout:"
+  lsblk -dn -o PATH,SERIAL,SIZE,TYPE,MOUNTPOINT 2>/dev/null || true
   echo "ERROR: Timed out waiting for EBS volume ${EBS_VOLUME_ID} to appear." >&2
   exit 1
 fi
@@ -104,15 +154,20 @@ log "Filesystem UUID: ${FS_UUID}"
 mkdir -p "${MINECRAFT_DIR}"
 
 # Add fstab entry if not already present (mount by UUID for stability)
-if ! grep -q "${FS_UUID}" /etc/fstab; then
+if ! grep -q "${FS_UUID}" "${FSTAB_FILE}"; then
   log "Adding fstab entry for UUID=${FS_UUID}..."
-  echo "UUID=${FS_UUID}  ${MINECRAFT_DIR}  ext4  defaults,nofail  0  2" >> /etc/fstab
+  echo "UUID=${FS_UUID}  ${MINECRAFT_DIR}  ext4  defaults,nofail  0  2" >> "${FSTAB_FILE}"
 fi
 
 # Mount if not already mounted
 if ! mountpoint -q "${MINECRAFT_DIR}"; then
   log "Mounting ${MINECRAFT_DIR}..."
   mount "${MINECRAFT_DIR}"
+fi
+
+if [[ "${EXIT_AFTER_STORAGE_SETUP:-false}" == "true" ]]; then
+  log "EXIT_AFTER_STORAGE_SETUP requested - stopping after storage setup"
+  exit 0
 fi
 
 # ---- Directory structure and ownership ---------------------------------------

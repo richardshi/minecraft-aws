@@ -24,15 +24,53 @@ if [[ $# -ne 1 ]]; then
 fi
 
 VOLUME_ID="$1"
+DISK_BY_ID_ROOT="${DISK_BY_ID_ROOT:-/dev/disk/by-id}"
+SYS_BLOCK_ROOT="${SYS_BLOCK_ROOT:-/sys/block}"
+DEVICE_ALIAS_PATHS="${DEVICE_ALIAS_PATHS:-/dev/sdf /dev/xvdf}"
 
 # Strip the "vol-" prefix for matching - the serial number format in sysfs
 # may encode it differently across kernel versions.
 VOLUME_ID_BARE="${VOLUME_ID#vol-}"
+VOLUME_ID_NODASH="vol${VOLUME_ID_BARE}"
 
-FOUND_DEVICE=""
-MATCH_COUNT=0
+FOUND_DEVICES=()
 
-for serial_path in /sys/block/nvme*n1/device/serial; do
+record_device() {
+  local device="$1"
+  local existing
+  for existing in "${FOUND_DEVICES[@]}"; do
+    if [[ "${existing}" == "${device}" ]]; then
+      return 0
+    fi
+  done
+  FOUND_DEVICES+=("${device}")
+}
+
+matches_volume_id() {
+  local value="$1"
+  [[ "$value" == *"${VOLUME_ID_BARE}"* ]] || [[ "$value" == *"${VOLUME_ID_NODASH}"* ]]
+}
+
+record_if_serial_matches() {
+  local device="$1"
+  local serial
+  serial="$(lsblk -ndo SERIAL "$device" 2>/dev/null || true)"
+  if [[ -n "${serial}" ]] && matches_volume_id "${serial}"; then
+    record_device "$(readlink -f "$device" 2>/dev/null || printf '%s\n' "$device")"
+  fi
+}
+
+# First try the stable /dev/disk/by-id symlinks if they exist.
+for by_id_path in "${DISK_BY_ID_ROOT}"/nvme-Amazon_Elastic_Block_Store_*; do
+  [[ -e "$by_id_path" ]] || continue
+  by_id_name=$(basename "$by_id_path")
+  if matches_volume_id "${by_id_name}"; then
+    resolved_device=$(readlink -f "$by_id_path" 2>/dev/null || true)
+    [[ -n "${resolved_device}" ]] && record_device "${resolved_device}"
+  fi
+done
+
+for serial_path in "${SYS_BLOCK_ROOT}"/nvme*n1/device/serial; do
   # Skip glob if no NVMe devices exist
   [[ -e "$serial_path" ]] || continue
 
@@ -40,26 +78,39 @@ for serial_path in /sys/block/nvme*n1/device/serial; do
 
   # Match either the full volume ID or the bare ID (without "vol-" prefix).
   # AWS encodes the EBS volume ID in the NVMe serial as "vol<hex>" (no dash).
-  VOLUME_ID_NODASH="vol${VOLUME_ID_BARE}"
-
-  if [[ "$serial" == *"${VOLUME_ID_BARE}"* ]] || [[ "$serial" == *"${VOLUME_ID_NODASH}"* ]]; then
+  if matches_volume_id "${serial}"; then
     # Derive block device path from sysfs path:
     # /sys/block/nvme1n1/device/serial -> /dev/nvme1n1
     device_name=$(basename "$(dirname "$(dirname "$serial_path")")")
-    FOUND_DEVICE="/dev/${device_name}"
-    MATCH_COUNT=$((MATCH_COUNT + 1))
+    record_device "/dev/${device_name}"
   fi
 done
 
-if [[ $MATCH_COUNT -eq 0 ]]; then
+# Fall back to lsblk serial matching when sysfs/by-id are missing or delayed.
+while read -r device serial; do
+  [[ -n "${device}" ]] || continue
+  if [[ -n "${serial}" ]] && matches_volume_id "${serial}"; then
+    record_device "${device}"
+  fi
+done < <(lsblk -dn -o PATH,SERIAL 2>/dev/null || true)
+
+# Final fallback: check the expected attachment aliases directly.
+for alias_path in ${DEVICE_ALIAS_PATHS}; do
+  [[ -e "${alias_path}" ]] || continue
+  record_if_serial_matches "${alias_path}"
+done
+
+if [[ ${#FOUND_DEVICES[@]} -eq 0 ]]; then
   echo "ERROR: No NVMe device found matching Volume ID '${VOLUME_ID}'" >&2
   echo "       Verify the volume is attached to this instance." >&2
+  echo "       lsblk snapshot:" >&2
+  lsblk -dn -o PATH,SERIAL,SIZE,TYPE,MOUNTPOINT 2>/dev/null >&2 || true
   exit 1
 fi
 
-if [[ $MATCH_COUNT -gt 1 ]]; then
+if [[ ${#FOUND_DEVICES[@]} -gt 1 ]]; then
   echo "ERROR: Multiple NVMe devices matched Volume ID '${VOLUME_ID}'" >&2
   exit 1
 fi
 
-echo "$FOUND_DEVICE"
+echo "${FOUND_DEVICES[0]}"
