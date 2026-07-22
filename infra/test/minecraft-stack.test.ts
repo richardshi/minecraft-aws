@@ -113,7 +113,7 @@ describe('IAM Role', () => {
     });
   });
 
-  test('has no wildcard Action in any inline policy', () => {
+  test('has no wildcard Action (including suffix wildcards like s3:Get*) in any inline policy', () => {
     const policies = template.findResources('AWS::IAM::Policy');
     for (const policy of Object.values(policies)) {
       const statements: Array<{ Action: string | string[] }> =
@@ -122,7 +122,7 @@ describe('IAM Role', () => {
         const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
         for (const action of actions) {
           if (typeof action === 'string') {
-            expect(action).not.toBe('*');
+            expect(action).not.toContain('*');
           }
         }
       }
@@ -268,20 +268,30 @@ describe('Bootstrap Asset', () => {
   let template: Template;
   beforeAll(() => { template = makeStack(); });
 
-  test('instance role has s3:GetObject for the CDK asset bucket', () => {
+  test('instance role has s3:GetObject scoped to the bootstrap asset object key only', () => {
     const policies = template.findResources('AWS::IAM::Policy');
-    let foundAssetGetObject = false;
+    let assetStatement: { Action: unknown; Effect: string; Resource: unknown } | undefined;
     for (const policy of Object.values(policies)) {
-      const statements: Array<{ Action: string | string[]; Effect: string }> =
+      const statements: Array<{ Action: unknown; Effect: string; Resource: unknown; Sid?: string }> =
         policy.Properties.PolicyDocument?.Statement ?? [];
       for (const stmt of statements) {
-        const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-        if (actions.includes('s3:GetObject') && stmt.Effect === 'Allow') {
-          foundAssetGetObject = true;
+        if (stmt.Sid === 'MinecraftBootstrapAssetAccess') {
+          assetStatement = stmt;
         }
       }
     }
-    expect(foundAssetGetObject).toBe(true);
+
+    expect(assetStatement).toBeDefined();
+    expect(assetStatement!.Effect).toBe('Allow');
+    // Exactly s3:GetObject — not GetObject*, not a list of actions.
+    expect(assetStatement!.Action).toBe('s3:GetObject');
+
+    // Resource must resolve to a single object key ARN (ends in ".zip"), never
+    // the bare bucket ARN or a "/*" wildcard — otherwise the instance could
+    // read every asset in the shared CDK bootstrap-assets bucket.
+    const resourceJson = JSON.stringify(assetStatement!.Resource);
+    expect(resourceJson).toMatch(/\.zip"/);
+    expect(resourceJson).not.toMatch(/\/\*"/);
   });
 });
 

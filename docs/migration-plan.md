@@ -74,6 +74,13 @@ aws ssm start-session --target "${INSTANCE_ID}" --region us-west-2
 sudo /usr/local/bin/restore.sh --backup-key minecraft-backup-import.tar.gz
 ```
 
+`restore.sh` validates the archive and stages it before touching anything live (see
+[backup-and-restore.md](backup-and-restore.md#restore-procedure)), and requires it to
+contain a world directory matching the instance's current `level-name` — this is why
+Step 1 says to adjust the world directory names to match. If the imported world fails
+to start cleanly, the script automatically rolls back to whatever was running before
+the import, so a bad import archive can't leave the server down.
+
 ### Step 4: Verify
 
 ```bash

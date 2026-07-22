@@ -161,11 +161,26 @@ sudo /usr/local/bin/restore.sh --dry-run
 
 The script:
 1. Lists available S3 backups (if no key is specified)
-2. Stops `minecraft.service` gracefully
-3. Downloads the selected archive to a temp directory
-4. Renames existing world directories to `world.pre-restore.<timestamp>` (preserved)
-5. Extracts the archive into `/opt/minecraft/`
-6. Starts `minecraft.service`
+2. Downloads the selected archive
+3. Validates it's a well-formed `tar.gz` (`minecraft.service` is not touched yet)
+4. Extracts it into a staging directory (`/opt/minecraft/.restore-staging`, on the
+   same volume as the live world) and verifies it actually contains the expected
+   world directory — still no live data touched, so the server keeps running while
+   a bad backup is downloaded, validated, and staged
+5. Stops `minecraft.service` — the first point of any real downtime
+6. Renames the current world directories to `world.pre-restore.<timestamp>` (preserved)
+7. Moves the staged world into place
+8. Starts `minecraft.service`
+9. Waits (up to `STARTUP_TIMEOUT`, default 90s) for the server to report ready in
+   `server.log`. If it doesn't come up healthy, the script **automatically rolls
+   back**: it preserves the failed attempt as `world.failed-restore.<timestamp>`
+   (never deleted), moves the `world.pre-restore.<timestamp>` copy back into place,
+   and restarts the server with the known-good world.
+
+Because steps 1-4 never touch the live world or the running server, an invalid or
+empty backup is caught with zero downtime. Only steps 5-9 involve stopping the
+server, and 8-9 are the only steps that can trigger the automatic rollback — that's
+also the point at which a `world.pre-restore.*` copy first exists to roll back to.
 
 ### Post-Restore Verification
 
@@ -188,8 +203,15 @@ The script renames (does not delete) the existing world directories before resto
 /opt/minecraft/world_the_end.pre-restore.20260101-130000
 ```
 
-These directories are preserved. If the restore was incorrect, stop the server,
-delete the restored world, and rename the pre-restore directories back:
+If the server fails to come up healthy after a restore, the script rolls this back
+**automatically** (see "Restore Using the Script" above): the bad attempt is preserved
+as `world.failed-restore.<timestamp>` (same naming convention, never deleted) and the
+`.pre-restore.*` copy is moved back into place, with no operator action required.
+
+Manual recovery is only needed when the restore *succeeded* (the server came up
+healthy) but the restored world turns out to be the wrong one, or wrong in some way
+the startup health check can't detect. In that case, stop the server, delete the
+restored world, and rename the pre-restore directories back:
 
 ```bash
 sudo systemctl stop minecraft.service

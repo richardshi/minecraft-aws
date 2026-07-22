@@ -103,15 +103,22 @@ prevent EOF when individual writers close), then `exec`s the JVM with stdin from
   rather than by Linux device name, which is non-deterministic on Nitro instances.
 - The volume is mounted by filesystem UUID (from `/etc/fstab`) for stability across
   reboots.
-- `DeleteOnTermination=false` on the `CfnVolumeAttachment` ensures the volume
-  survives even if the instance is accidentally terminated.
+- The volume is attached out-of-band via `CfnVolumeAttachment` rather than being
+  listed in the instance's own block device mapping. `DeleteOnTermination` only
+  applies to volumes declared in that mapping — `CfnVolumeAttachment` has no such
+  property — so the data volume is never deleted when the instance terminates,
+  regardless of how the instance is replaced or torn down.
 
 ### Bootstrap Asset
 
 All instance-side files (installer, scripts, systemd units, CloudWatch config) are
-packaged as a versioned CDK S3 asset. The EC2 user-data script (under 1 KB) downloads,
-verifies (SHA256), and runs the installer. This keeps user-data well under the 16 KB
-limit and allows updates without re-creating the instance (see [operations.md](operations.md)).
+packaged as a versioned CDK S3 asset. The EC2 user-data script (under 1 KB) downloads
+and runs the installer. Integrity and authenticity come from the download being over
+TLS, from the object key itself being content-addressed (a hash of the asset's
+contents), and from the instance role being scoped to read only that exact object key
+(`MinecraftBootstrapAssetAccess`) — not from a separate checksum step. This keeps
+user-data well under the 16 KB limit and allows updates without re-creating the
+instance (see [operations.md](operations.md)).
 
 ### Elastic IP
 

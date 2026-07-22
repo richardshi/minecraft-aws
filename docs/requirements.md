@@ -31,8 +31,10 @@ the system must do and what constraints it must satisfy.
 - The EBS data volume and world data are preserved while the instance is stopped.
 - The EC2 instance is configured with `instanceInitiatedShutdownBehavior=stop`
   so an OS-level shutdown or reboot stops the instance rather than terminating it.
-- The EBS volume has `RemovalPolicy.RETAIN` and `DeleteOnTermination=false` so it
-  survives both `cdk destroy` and accidental instance termination.
+- The EBS volume has `RemovalPolicy.RETAIN`, and — because it is attached
+  out-of-band via `CfnVolumeAttachment` rather than declared in the instance's
+  block device mapping — it is never deleted on instance termination. Together
+  these survive both `cdk destroy` and accidental instance termination.
 - Exact start, stop, status, and connection commands are documented in [operations.md](operations.md).
 
 ### 3. Hourly Backups with Five-Backup Retention

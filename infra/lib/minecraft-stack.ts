@@ -167,8 +167,19 @@ export class MinecraftStack extends cdk.Stack {
       path: path.join(__dirname, '../assets'),
     });
 
-    // Grant the instance role read access to the specific asset object
-    bootstrapAsset.grantRead(instanceRole);
+    // Grant the instance role read access to only this asset's object key.
+    // Asset.grantRead() grants s3:GetBucket*/GetObject*/List* on the *entire*
+    // CDK bootstrap-assets bucket (every asset from every stack ever published
+    // under this account/region's CDK qualifier) — it does not scope to the
+    // object key. Use an explicit statement scoped to the exact object ARN instead.
+    instanceRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'MinecraftBootstrapAssetAccess',
+        effect: iam.Effect.ALLOW,
+        actions: ['s3:GetObject'],
+        resources: [bootstrapAsset.bucket.arnForObjects(bootstrapAsset.s3ObjectKey)],
+      }),
+    );
 
     // =========================================================================
     // Task 10 — CloudWatch log groups, metric filters, alarms, and budget
@@ -293,14 +304,12 @@ export class MinecraftStack extends cdk.Stack {
     // itself is generic and the 16 KB limit is not approached.
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
-      '#!/bin/bash',
       'set -euo pipefail',
       'exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1',
       '',
       '# ---- Bootstrap environment variables (injected by CDK) ----',
       `export ASSET_BUCKET="${bootstrapAsset.s3BucketName}"`,
       `export ASSET_KEY="${bootstrapAsset.s3ObjectKey}"`,
-      `export ASSET_HASH="${bootstrapAsset.assetHash}"`,
       `export MINECRAFT_VERSION="${config.minecraftVersion}"`,
       `export MINECRAFT_PORT="${config.minecraftPort}"`,
       `export MINECRAFT_EULA_ACCEPTED="${config.minecraftEulaAccepted}"`,
@@ -312,17 +321,18 @@ export class MinecraftStack extends cdk.Stack {
       // Volume ID is not known until synth time — use CloudFormation Ref via token
       `export EBS_VOLUME_ID="${dataVolume.volumeId}"`,
       '',
+      // No separate checksum step: ASSET_KEY is itself content-addressed (a hash
+      // of the source), the download is over TLS, and the instance role can only
+      // read this exact object key (see MinecraftBootstrapAssetAccess policy) —
+      // together these already give integrity and authenticity. A prior version
+      // of this script compared against bootstrapAsset.assetHash, but that value
+      // is CDK's own directory-fingerprint (used to name the S3 key), not the
+      // SHA256 of the published .zip bytes, so the check could never pass.
       '# ---- Download bootstrap asset from S3 ----',
       'TMPDIR=$(mktemp -d)',
       'trap \'rm -rf "$TMPDIR"\' EXIT',
       '',
       'aws s3 cp "s3://${ASSET_BUCKET}/${ASSET_KEY}" "${TMPDIR}/bootstrap.zip"',
-      '',
-      '# ---- Verify SHA256 checksum ----',
-      'echo "${ASSET_HASH}  ${TMPDIR}/bootstrap.zip" | sha256sum --check || {',
-      '  echo "ERROR: bootstrap asset checksum mismatch" >&2',
-      '  exit 1',
-      '}',
       '',
       '# ---- Extract and run installer ----',
       'unzip -q "${TMPDIR}/bootstrap.zip" -d "${TMPDIR}/bootstrap"',
@@ -364,10 +374,15 @@ export class MinecraftStack extends cdk.Stack {
     // Ensure volume is attached before instance starts initialising
     instance.node.addDependency(dataVolume);
 
-    // Set DeleteOnTermination=false on the root volume block device mapping
-    // and ensure the data volume attachment does not delete the volume on termination.
-    // The data volume's RemovalPolicy.RETAIN already covers cdk destroy.
-    // Setting NoDevice on additional volumes prevents accidental deletion.
+    // Only the root volume is declared here. The data volume is deliberately
+    // absent from this list — it is attached separately above via
+    // CfnVolumeAttachment (an out-of-band AttachVolume, not part of the
+    // instance's launch-time block device mapping). EBS volumes attached that
+    // way are never deleted on instance termination; DeleteOnTermination only
+    // applies to volumes declared in the mapping below. CfnVolumeAttachment
+    // itself has no DeleteOnTermination property. Combined with the data
+    // volume's own RemovalPolicy.RETAIN, this protects it across both
+    // instance termination and cdk destroy.
     cfnInstance.blockDeviceMappings = [
       {
         // Root volume — keep default size, just ensure no accidental termination delete
