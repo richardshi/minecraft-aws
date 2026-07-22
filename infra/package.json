@@ -5,6 +5,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
+    "test:shell": "bats test/backup.bats test/restore.bats",
+    "predeploy": "npm run build && npm run test && npm run test:shell",
     "cdk": "cdk"
   },
   "devDependencies": {

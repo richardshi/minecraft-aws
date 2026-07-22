@@ -23,16 +23,12 @@ All commands run from `infra/`:
 npm run build          # tsc type-check (noEmit)
 npm run watch          # tsc -w
 npm test               # jest - CDK assertion tests in infra/test/*.test.ts
+npm run test:shell     # bats - backup/restore script tests
+npm run predeploy      # all local pre-deploy checks
 npx jest -t "<name>"   # run a single test by name
 npx cdk synth          # emit CloudFormation template to cdk.out/
 npx cdk diff           # compare deployed stack with current code
 npx cdk deploy         # deploy - see "Safety" below
-```
-
-Bash unit tests for the backup script (bats), run from the repo root:
-
-```bash
-bats infra/test/backup.bats
 ```
 
 `npx cdk` and jest are invoked via `npx`/`npm` scripts - there is no global CDK
@@ -114,6 +110,7 @@ Key design points that shape how changes should be made:
   against synthesized CloudFormation from `MinecraftStack` (security group rules,
   IAM policy scoping, resource properties, etc.). Use `makeStack(overrides)` helper
   to build a `Template` with a partial `ServerConfig` override.
-- `infra/test/backup.bats` - bats tests for `infra/assets/backup.sh` in isolation,
-  mocking the FIFO, `aws` CLI, and `systemctl` via a fake `PATH` entry so no real
-  AWS access or running Minecraft server is needed.
+- `infra/test/backup.bats` and `infra/test/restore.bats` - bats tests for the
+  instance-side backup/restore scripts in isolation. `npm run test:shell` runs both;
+  they mock `aws`, `systemctl`, and filesystem interactions so no real AWS access or
+  running Minecraft server is needed.

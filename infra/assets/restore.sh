@@ -157,6 +157,17 @@ if [[ -f "${PROPS_FILE}" ]]; then
 fi
 log "Current level-name: '${LEVEL_NAME}'"
 
+staged_path() {
+  local candidate="$1"
+  if [[ -e "${STAGING_DIR}/${candidate}" ]]; then
+    printf '%s\n' "${STAGING_DIR}/${candidate}"
+  elif [[ -e "${STAGING_DIR}/./${candidate}" ]]; then
+    printf '%s\n' "${STAGING_DIR}/./${candidate}"
+  else
+    return 1
+  fi
+}
+
 # ---- Download backup ---------------------------------------------------------
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "${TMPDIR}"' EXIT
@@ -192,7 +203,12 @@ fi
 if [[ "${DRY_RUN}" == "true" ]]; then
   dry_log "Would verify ${STAGING_DIR}/${LEVEL_NAME} exists"
 else
-  if [[ ! -d "${STAGING_DIR}/${LEVEL_NAME}" ]]; then
+  STAGED_WORLD_DIR="$(staged_path "${LEVEL_NAME}")" || {
+    log "BACKUP_FAILED: ${BACKUP_KEY} does not contain expected world directory '${LEVEL_NAME}/' - aborting (minecraft.service was not touched)"
+    rm -rf "${STAGING_DIR}"
+    exit 1
+  }
+  if [[ ! -d "${STAGED_WORLD_DIR}" ]]; then
     log "BACKUP_FAILED: ${BACKUP_KEY} does not contain expected world directory '${LEVEL_NAME}/' - aborting (minecraft.service was not touched)"
     rm -rf "${STAGING_DIR}"
     exit 1

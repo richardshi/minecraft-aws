@@ -54,7 +54,12 @@ AWS_MOCK
 echo "\$*" >> "${TEST_DIR}/systemctl-calls.log"
 case "\$1" in
   is-active) exit "\${SYSTEMCTL_IS_ACTIVE_EXIT:-0}" ;;
-  start) exit "\${SYSTEMCTL_START_EXIT:-0}" ;;
+  start)
+    if [[ -n "\${SYSTEMCTL_START_READY_LINE:-}" ]]; then
+      printf '%s\n' "\${SYSTEMCTL_START_READY_LINE}" >> "${SERVER_LOG}"
+    fi
+    exit "\${SYSTEMCTL_START_EXIT:-0}"
+    ;;
   stop) exit "\${SYSTEMCTL_STOP_EXIT:-0}" ;;
   *) exit 0 ;;
 esac
@@ -114,13 +119,17 @@ seed_ready_log() {
   printf '[12:00:00] [Server thread/INFO]: Done (1.234s)! For help, type "help"\n' > "${SERVER_LOG}"
 }
 
+configure_ready_on_start() {
+  export SYSTEMCTL_START_READY_LINE='[12:00:00] [Server thread/INFO]: Done (1.234s)! For help, type "help"'
+}
+
 # ---------------------------------------------------------------------------
 # 1. Successful restore
 # ---------------------------------------------------------------------------
 
 @test "exits 0 and logs BACKUP_SUCCESS when restore completes and server reports ready" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
-  seed_ready_log
+  configure_ready_on_start
 
   run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
 
@@ -130,7 +139,7 @@ seed_ready_log() {
 
 @test "successful restore replaces world content with the restored archive" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
-  seed_ready_log
+  configure_ready_on_start
 
   run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
 
@@ -140,7 +149,7 @@ seed_ready_log() {
 
 @test "successful restore preserves the old world as a pre-restore copy" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
-  seed_ready_log
+  configure_ready_on_start
 
   run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
 
@@ -153,7 +162,7 @@ seed_ready_log() {
 
 @test "successful restore cleans up the staging directory" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
-  seed_ready_log
+  configure_ready_on_start
 
   run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
 
@@ -163,7 +172,7 @@ seed_ready_log() {
 
 @test "successful restore stops and starts minecraft.service" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
-  seed_ready_log
+  configure_ready_on_start
 
   run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
 
