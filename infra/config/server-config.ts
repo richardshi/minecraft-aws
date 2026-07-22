@@ -4,8 +4,8 @@
  * IMPORTANT - EULA:
  *   minecraftEulaAccepted is intentionally false in this repository.
  *   Before deploying, you must read and accept the Minecraft End User
- *   License Agreement at https://aka.ms/MinecraftEULA, then set
- *   minecraftEulaAccepted to true in your local copy.
+ *   License Agreement at https://aka.ms/MinecraftEULA, then set the
+ *   deploy-time environment variable CDK_MINECRAFT_EULA_ACCEPTED=true.
  *   Do NOT commit minecraftEulaAccepted: true to version control.
  *
  * NOTE - budgetAlertEmail:
@@ -85,7 +85,7 @@ export const defaultConfig: ServerConfig = {
   backupRetentionCount: 5,
 
   // EULA: false is the safe repository default.
-  // Set to true locally only after accepting https://aka.ms/MinecraftEULA
+  // Enable only at deploy time via CDK_MINECRAFT_EULA_ACCEPTED=true
   minecraftEulaAccepted: false,
 
   logRetentionDays: 30,
@@ -95,3 +95,17 @@ export const defaultConfig: ServerConfig = {
   dnsHostname: '',
   hostedZoneId: '',
 };
+
+export function resolveConfigFromEnv(baseConfig: ServerConfig = defaultConfig): ServerConfig {
+  const region =
+    process.env.CDK_DEPLOY_REGION ??
+    process.env.AWS_REGION ??
+    process.env.AWS_DEFAULT_REGION ??
+    baseConfig.region;
+
+  return {
+    ...baseConfig,
+    region,
+    minecraftEulaAccepted: process.env.CDK_MINECRAFT_EULA_ACCEPTED === 'true',
+  };
+}

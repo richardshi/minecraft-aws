@@ -7,6 +7,7 @@
     "test": "jest",
     "test:shell": "bats test/backup.bats test/restore.bats",
     "predeploy": "npm run build && npm run test && npm run test:shell",
+    "deploy:all": "bash scripts/deploy-check-and-push.sh",
     "cdk": "cdk"
   },
   "devDependencies": {

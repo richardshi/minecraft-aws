@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
 import { MinecraftStack } from '../lib/minecraft-stack.js';
-import { defaultConfig } from '../config/server-config.js';
+import { defaultConfig, resolveConfigFromEnv } from '../config/server-config.js';
 
 const app = new cdk.App();
+const deployConfig = resolveConfigFromEnv(defaultConfig);
 
 new MinecraftStack(app, 'MinecraftStack', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: defaultConfig.region,
+    region: deployConfig.region,
   },
-  serverConfig: defaultConfig,
+  serverConfig: deployConfig,
 });

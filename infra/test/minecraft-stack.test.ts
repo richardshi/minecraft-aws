@@ -139,6 +139,11 @@ describe('IAM Role', () => {
     const policies = template.findResources('AWS::IAM::Policy');
     const attachmentActions = ['ec2:AttachVolume', 'ec2:DetachVolume'];
     for (const policy of Object.values(policies)) {
+      const roles: unknown[] = policy.Properties.Roles ?? [];
+      const appliesToInstanceRole = roles.some(role => JSON.stringify(role).includes('MinecraftInstanceRole'));
+      if (!appliesToInstanceRole) {
+        continue;
+      }
       const statements: Array<{ Action: string | string[] }> =
         policy.Properties.PolicyDocument?.Statement ?? [];
       for (const stmt of statements) {
@@ -531,12 +536,17 @@ describe('EC2 Instance', () => {
     }
   });
 
-  test('creates a CfnVolumeAttachment resource', () => {
-    template.resourceCountIs('AWS::EC2::VolumeAttachment', 1);
+  test('creates a custom resource to hand over the retained EBS volume', () => {
+    template.hasResourceProperties('AWS::CloudFormation::CustomResource', {
+      Device: '/dev/sdf',
+      ServiceToken: Match.anyValue(),
+      VolumeId: Match.anyValue(),
+      InstanceId: Match.anyValue(),
+    });
   });
 
-  test('VolumeAttachment uses device /dev/sdf', () => {
-    template.hasResourceProperties('AWS::EC2::VolumeAttachment', {
+  test('volume handoff custom resource uses device /dev/sdf', () => {
+    template.hasResourceProperties('AWS::CloudFormation::CustomResource', {
       Device: '/dev/sdf',
     });
   });

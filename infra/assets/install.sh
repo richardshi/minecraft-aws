@@ -71,11 +71,11 @@ fi
 # ---- EBS volume: identify, format (if needed), mount ------------------------
 log "Identifying EBS device for volume ${EBS_VOLUME_ID}..."
 DEVICE=""
-for attempt in $(seq 1 30); do
+for attempt in $(seq 1 180); do
   if DEVICE=$("${SCRIPT_DIR}/find-ebs-device.sh" "${EBS_VOLUME_ID}" 2>/dev/null); then
     break
   fi
-  log "EBS device not visible yet (attempt ${attempt}/30), retrying in 2s..."
+  log "EBS device not visible yet (attempt ${attempt}/180), retrying in 2s..."
   sleep 2
 done
 
