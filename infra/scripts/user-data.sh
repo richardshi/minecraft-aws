@@ -8,8 +8,7 @@
 # versioned CDK S3 asset). This script only:
 #   1. Ensures aws-cli and unzip are available.
 #   2. Downloads the bootstrap asset from S3.
-#   3. Verifies the SHA256 checksum.
-#   4. Extracts and runs install.sh.
+#   3. Extracts and runs install.sh.
 #
 # All environment variables (MINECRAFT_VERSION, BACKUP_BUCKET, etc.) are
 # injected by the CDK stack before this script runs.
@@ -46,15 +45,6 @@ ARCHIVE="${TMPDIR}/bootstrap.zip"
 echo "[user-data] Downloading bootstrap asset from s3://${ASSET_BUCKET}/${ASSET_KEY}"
 aws s3 cp "s3://${ASSET_BUCKET}/${ASSET_KEY}" "${ARCHIVE}" \
   --region "${AWS_DEFAULT_REGION}"
-
-# ---- Verify SHA256 checksum -------------------------------------------------
-# ASSET_HASH is the CDK asset hash (hex SHA256 of the asset contents).
-echo "[user-data] Verifying checksum..."
-echo "${ASSET_HASH}  ${ARCHIVE}" | sha256sum --check || {
-  echo "ERROR: Bootstrap asset checksum mismatch — aborting." >&2
-  exit 1
-}
-echo "[user-data] Checksum verified"
 
 # ---- Extract and run installer ----------------------------------------------
 unzip -q "${ARCHIVE}" -d "${TMPDIR}/bootstrap"

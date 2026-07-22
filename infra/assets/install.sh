@@ -70,7 +70,20 @@ fi
 
 # ---- EBS volume: identify, format (if needed), mount ------------------------
 log "Identifying EBS device for volume ${EBS_VOLUME_ID}..."
-DEVICE=$("${SCRIPT_DIR}/find-ebs-device.sh" "${EBS_VOLUME_ID}")
+DEVICE=""
+for attempt in $(seq 1 30); do
+  if DEVICE=$("${SCRIPT_DIR}/find-ebs-device.sh" "${EBS_VOLUME_ID}" 2>/dev/null); then
+    break
+  fi
+  log "EBS device not visible yet (attempt ${attempt}/30), retrying in 2s..."
+  sleep 2
+done
+
+if [[ -z "${DEVICE}" ]]; then
+  echo "ERROR: Timed out waiting for EBS volume ${EBS_VOLUME_ID} to appear." >&2
+  exit 1
+fi
+
 log "Found device: ${DEVICE}"
 
 # Format only if no filesystem is present (idempotent)

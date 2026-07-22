@@ -114,6 +114,7 @@ SYSTEMCTL_MOCK
   export BACKUP_BUCKET="mock-bucket"
   export BACKUP_RETENTION="5"
   export AWS_DEFAULT_REGION="us-west-2"
+  export AUTO_FLUSH_SUCCESS=false
   # Short timeouts for fast test execution
   export FLUSH_TIMEOUT=2
   export FIFO_WRITE_TIMEOUT=1
@@ -137,23 +138,39 @@ run_backup() {
   # Start the FIFO reader first (reader must open before writer on a FIFO)
   cat "${FIFO}" >> "${TEST_DIR}/fifo-received.txt" &
   local reader_pid=$!
+  local flush_pid=""
 
   # Now open a persistent writer fd — keeps the write-end open so individual
   # printf writes in backup.sh complete immediately without blocking, and
   # the cat reader above doesn't see spurious EOF between writes.
   exec 8>"${FIFO}"
 
+  # Successful backup cases need the flush confirmation to appear after
+  # backup.sh has started and recorded the pre-flush log offset.
+  if [[ "${AUTO_FLUSH_SUCCESS:-false}" == "true" ]]; then
+    (
+      sleep 0.2
+      printf '[12:00:00] [Server thread/INFO]: Saved the game\n' >> "${SERVER_LOG}"
+      sleep 0.2
+      printf '[12:00:01] [Server thread/INFO]: Saved the game\n' >> "${SERVER_LOG}"
+    ) &
+    flush_pid=$!
+  fi
+
   run bash "${BACKUP_SCRIPT}"
 
   # Close writer, drain reader
   exec 8>&-
+  if [[ -n "${flush_pid}" ]]; then
+    wait "${flush_pid}" 2>/dev/null || true
+  fi
   sleep 0.3
   kill "${reader_pid}" 2>/dev/null || true
   wait "${reader_pid}" 2>/dev/null || true
 }
 
 simulate_flush_success() {
-  printf '[12:00:00] [Server thread/INFO]: Saved the game\n' > "${SERVER_LOG}"
+  export AUTO_FLUSH_SUCCESS=true
 }
 
 # Create N pre-existing backup objects in mock S3
@@ -212,6 +229,13 @@ create_mock_backups() {
     run grep "s3 cp" "${TEST_DIR}/aws-calls.log"
     [ "$status" -ne 0 ]
   fi
+}
+
+@test "does not treat a stale 'Saved the game' line as the current flush confirmation" {
+  printf '[11:59:00] [Server thread/INFO]: Saved the game\n' > "${SERVER_LOG}"
+  run_backup
+  [ "$status" -ne 0 ]
+  grep -q "timed out" "${BACKUP_LOG}"
 }
 
 # ---------------------------------------------------------------------------

@@ -17,6 +17,12 @@ function makeStack(overrides: Partial<ServerConfig> = {}): Template {
   return Template.fromStack(stack);
 }
 
+describe('Server Config', () => {
+  test('keeps minecraftEulaAccepted disabled by default in the repository config', () => {
+    expect(defaultConfig.minecraftEulaAccepted).toBe(false);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Task 2 — VPC and Security Group
 // ---------------------------------------------------------------------------

@@ -259,6 +259,18 @@ seed_ready_log() {
   grep -q "rolling back" "${BACKUP_LOG}"
 }
 
+@test "does not treat a stale ready line from a previous boot as a successful restore" {
+  make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
+  printf '[11:59:00] [Server thread/INFO]: Done (1.234s)! For help, type "help"\n' > "${SERVER_LOG}"
+  export SYSTEMCTL_IS_ACTIVE_EXIT=0
+
+  run_restore --backup-key minecraft-backup-20260101-000000.tar.gz
+
+  [ "$status" -ne 0 ]
+  grep -q "rolling back" "${BACKUP_LOG}"
+  grep -q "old chunk" "${MINECRAFT_DIR}/world/r.0.0.mca"
+}
+
 @test "timeout rollback restores the previous world content" {
   make_backup_archive "minecraft-backup-20260101-000000.tar.gz" "new chunk"
   export SYSTEMCTL_IS_ACTIVE_EXIT=0

@@ -238,13 +238,15 @@ do_swap_and_start() {
   chown -R minecraft:minecraft "${MINECRAFT_DIR}" || return 1
 
   log "Starting minecraft.service..."
+  local log_size_before_start
+  log_size_before_start=$(wc -c < "${SERVER_LOG}" 2>/dev/null || echo 0)
   systemctl start minecraft.service || return 1
 
   log "Waiting up to ${STARTUP_TIMEOUT}s for minecraft.service to report ready..."
   local elapsed=0
   local confirmed=false
   while [[ ${elapsed} -lt ${STARTUP_TIMEOUT} ]]; do
-    if tail -n 200 "${SERVER_LOG}" 2>/dev/null | grep -q 'Done ('; then
+    if tail -c "+$((log_size_before_start + 1))" "${SERVER_LOG}" 2>/dev/null | grep -q 'Done ('; then
       confirmed=true
       break
     fi

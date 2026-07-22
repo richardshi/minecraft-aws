@@ -86,7 +86,7 @@ export const defaultConfig: ServerConfig = {
 
   // EULA: false is the safe repository default.
   // Set to true locally only after accepting https://aka.ms/MinecraftEULA
-  minecraftEulaAccepted: true,
+  minecraftEulaAccepted: false,
 
   logRetentionDays: 30,
   monthlyBudgetUsd: 50,

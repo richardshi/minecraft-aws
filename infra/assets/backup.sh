@@ -86,6 +86,7 @@ fi
 log "INFO: starting backup (level-name='${LEVEL_NAME}')"
 
 # ---- Safe flush: save-off then save-all flush --------------------------------
+LOG_SIZE_BEFORE_FLUSH=$(wc -c < "${SERVER_LOG}" 2>/dev/null || echo 0)
 _fifo_write "save-off"
 _fifo_write "save-all flush"
 
@@ -93,8 +94,8 @@ _fifo_write "save-all flush"
 ELAPSED=0
 FLUSH_CONFIRMED=false
 while [[ ${ELAPSED} -lt ${FLUSH_TIMEOUT} ]]; do
-  # Read the last 50 lines to catch a recent save confirmation
-  if tail -n 50 "${SERVER_LOG}" 2>/dev/null | grep -q "Saved the game"; then
+  # Only consider log bytes written after this backup requested a flush.
+  if tail -c "+$((LOG_SIZE_BEFORE_FLUSH + 1))" "${SERVER_LOG}" 2>/dev/null | grep -q "Saved the game"; then
     FLUSH_CONFIRMED=true
     break
   fi
