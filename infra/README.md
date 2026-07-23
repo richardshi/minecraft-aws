@@ -54,3 +54,38 @@ Useful options:
 * `npm run deploy:all -- --yes` executes the prepared change set without prompting
 
 If the prepared change set contains no infrastructure changes, the script exits successfully after deleting the no-op change set.
+
+## Operations Notes
+
+Covered:
+
+* EC2 replacement is supported while keeping the retained EBS world volume.
+* `server.jar` is upgraded automatically on redeploy when `minecraftVersion` changes.
+* `whitelist.json` stays on the retained EBS volume, so whitelist entries survive instance replacement.
+* Backup and restore scripts are covered by Bats tests.
+
+Still manual:
+
+* Bump `minecraftVersion` in `config/server-config.ts` when Mojang releases a new server version, then redeploy.
+* Add Minecraft Java usernames to the whitelist as needed.
+
+Useful commands:
+
+```bash
+npm run deploy:all
+npm run predeploy
+npm run test:shell
+bash scripts/ec2-status.sh
+bash scripts/ec2-start.sh
+bash scripts/ec2-stop.sh
+printf 'whitelist add <java_username>\n' | sudo tee /run/minecraft/stdin > /dev/null
+printf 'whitelist list\n' | sudo tee /run/minecraft/stdin > /dev/null
+sudo tail -n 50 /var/log/minecraft/server.log
+sudo tail -f /var/log/user-data.log
+```
+
+The EC2 helper scripts default to `--profile minecraft-prod`, `--region us-west-2`,
+and `./minecraft-outputs.json`. They resolve the instance ID from the outputs file
+first, then fall back to the `MinecraftStack` CloudFormation outputs. You can
+override that with `--instance-id`, `--stack`, `--profile`, `--region`, or
+`--outputs-file`.

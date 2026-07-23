@@ -383,6 +383,15 @@ create_mock_backups() {
   tar -tzf "${archive}" | grep -q "myworld/"
 }
 
+@test "falls back to world when server.properties has no level-name entry" {
+  simulate_flush_success
+  printf 'server-port=25565\nmotd=Test\n' > "${MINECRAFT_DIR}/server.properties"
+  printf 'chunk data\n' > "${MINECRAFT_DIR}/world/r.0.0.mca"
+  run_backup
+  [ "$status" -eq 0 ]
+  grep -q "BACKUP_SUCCESS" "${BACKUP_LOG}"
+}
+
 # ---------------------------------------------------------------------------
 # 6. Pruning
 # ---------------------------------------------------------------------------

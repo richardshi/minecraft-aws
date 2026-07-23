@@ -77,7 +77,12 @@ PROPS_FILE="${MINECRAFT_DIR}/server.properties"
 LEVEL_NAME="world" # safe default
 
 if [[ -f "${PROPS_FILE}" ]]; then
-  LEVEL_NAME_RAW=$(grep '^level-name=' "${PROPS_FILE}" | cut -d= -f2 | tr -d '[:space:]')
+  LEVEL_NAME_RAW="$(
+    grep '^level-name=' "${PROPS_FILE}" 2>/dev/null \
+      | cut -d= -f2 \
+      | tr -d '[:space:]' \
+      || true
+  )"
   if [[ -n "${LEVEL_NAME_RAW}" ]]; then
     LEVEL_NAME="${LEVEL_NAME_RAW}"
   fi
