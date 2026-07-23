@@ -77,7 +77,7 @@ export interface ServerConfig {
 export const defaultConfig: ServerConfig = {
   region: 'us-west-2',
   instanceType: 't3.medium',
-  minecraftVersion: '26.1.2',
+  minecraftVersion: '26.2',
   minecraftPort: 25565,
   ebsVolumeSizeGb: 20,
   javaMemoryXms: '2G',

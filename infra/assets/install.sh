@@ -178,9 +178,22 @@ chown -R "${MINECRAFT_USER}:${MINECRAFT_USER}" "${MINECRAFT_DIR}" "${LOG_DIR}"
 
 # ---- Minecraft server JAR ----------------------------------------------------
 JAR_PATH="${MINECRAFT_DIR}/server.jar"
+VERSION_MARKER="${MINECRAFT_DIR}/.minecraft-version"
 
-if [[ ! -f "${JAR_PATH}" ]]; then
+INSTALLED_VERSION=""
+if [[ -f "${VERSION_MARKER}" ]]; then
+  INSTALLED_VERSION="$(tr -d '[:space:]' < "${VERSION_MARKER}" 2>/dev/null || true)"
+fi
+
+if [[ ! -f "${JAR_PATH}" || "${INSTALLED_VERSION}" != "${MINECRAFT_VERSION}" ]]; then
   log "Downloading Minecraft server JAR version ${MINECRAFT_VERSION}..."
+  if [[ -f "${JAR_PATH}" ]]; then
+    if [[ -n "${INSTALLED_VERSION}" ]]; then
+      log "Existing server.jar version marker is '${INSTALLED_VERSION}' - replacing with '${MINECRAFT_VERSION}'"
+    else
+      log "Existing server.jar has no version marker - replacing with '${MINECRAFT_VERSION}'"
+    fi
+  fi
 
   MANIFEST_URL="https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
   MANIFEST=$(curl -fsSL "${MANIFEST_URL}")
@@ -219,9 +232,11 @@ else:
 
   mv "${JAR_PATH}.tmp" "${JAR_PATH}"
   chown "${MINECRAFT_USER}:${MINECRAFT_USER}" "${JAR_PATH}"
+  printf '%s\n' "${MINECRAFT_VERSION}" > "${VERSION_MARKER}"
+  chown "${MINECRAFT_USER}:${MINECRAFT_USER}" "${VERSION_MARKER}"
   log "server.jar downloaded and verified (SHA1: ${SERVER_SHA1})"
 else
-  log "server.jar already present at ${JAR_PATH}, skipping download"
+  log "server.jar version ${MINECRAFT_VERSION} already present at ${JAR_PATH}, skipping download"
 fi
 
 # ---- server.properties (write only if absent - preserves operator edits) ----

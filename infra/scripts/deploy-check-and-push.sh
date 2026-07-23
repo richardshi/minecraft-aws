@@ -154,6 +154,11 @@ for required_command in aws npm npx; do
   }
 done
 
+command -v nc >/dev/null 2>&1 || {
+  echo "Required command not found: nc" >&2
+  exit 1
+}
+
 [[ -f package.json ]] || {
   echo "package.json not found under ${ROOT_DIR}" >&2
   echo "Check that this script is located under infra/scripts/." >&2
@@ -171,6 +176,8 @@ CDK_ENV=(
 if [[ "${RUN_CHECKS}" == "true" ]]; then
   run_step "${CDK_ENV[@]}" npm run predeploy
 fi
+
+run_step rm -rf cdk.out
 
 ACTUAL_ACCOUNT_ID="$(
   aws sts get-caller-identity \
@@ -270,6 +277,23 @@ run_step aws cloudformation describe-stacks \
   --query 'Stacks[0].{Status:StackStatus,TerminationProtection:EnableTerminationProtection,Outputs:Outputs}' \
   --output json \
   --no-cli-pager
+
+ELASTIC_IP="$(
+  aws cloudformation describe-stacks \
+    --stack-name "${STACK_NAME}" \
+    --profile "${PROFILE}" \
+    --region "${REGION}" \
+    --query "Stacks[0].Outputs[?OutputKey=='ElasticIpAddress'].OutputValue | [0]" \
+    --output text \
+    --no-cli-pager
+)"
+
+if [[ -n "${ELASTIC_IP}" && "${ELASTIC_IP}" != "None" ]]; then
+  run_step nc -vz "${ELASTIC_IP}" 25565
+else
+  echo "Could not determine ElasticIpAddress output for ${STACK_NAME}." >&2
+  exit 1
+fi
 
 printf '\nDeployment complete.\n'
 printf 'Outputs written to: %s/%s\n' "${ROOT_DIR}" "${OUTPUTS_FILE}"
