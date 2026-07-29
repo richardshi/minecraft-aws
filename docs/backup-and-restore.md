@@ -168,7 +168,9 @@ rm -rf /tmp/test-backup.tar.gz /tmp/backup-verify
 ### Restore Using the Script (Recommended)
 
 The `restore.sh` script is installed at `/usr/local/bin/restore.sh` on the instance.
-Run it via SSM Session Manager as root.
+Run it via SSM Session Manager as root. It automatically loads `BACKUP_BUCKET` and
+`AWS_DEFAULT_REGION` from `/opt/minecraft/minecraft-env` (the same file `backup.sh`'s
+systemd unit uses) if they aren't already set in your shell.
 
 ```bash
 # Connect via SSM Session Manager

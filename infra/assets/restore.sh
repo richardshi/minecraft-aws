@@ -49,6 +49,18 @@ SERVER_LOG="${SERVER_LOG:-/var/log/minecraft/server.log}"
 STAGING_DIR="${STAGING_DIR:-${MINECRAFT_DIR}/.restore-staging}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-90}"
 
+# Unlike backup.sh, this script has no systemd unit to supply BACKUP_BUCKET/
+# AWS_DEFAULT_REGION via EnvironmentFile= - it's invoked directly by an
+# operator. Fall back to sourcing the same env file backup.sh's unit uses, so
+# a plain `sudo restore.sh` works without the operator having to source it
+# manually first. Only when BACKUP_BUCKET isn't already set, so explicit
+# environment overrides (e.g. test harnesses) still take precedence.
+ENV_FILE="${MINECRAFT_DIR}/minecraft-env"
+if [[ -z "${BACKUP_BUCKET:-}" ]] && [[ -f "${ENV_FILE}" ]]; then
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+fi
+
 BUCKET="${BACKUP_BUCKET:?BACKUP_BUCKET environment variable is not set}"
 REGION="${AWS_DEFAULT_REGION:?AWS_DEFAULT_REGION is not set}"
 S3_PREFIX="minecraft-backup"
