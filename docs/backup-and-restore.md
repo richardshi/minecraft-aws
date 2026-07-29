@@ -108,6 +108,31 @@ sudo -u minecraft /usr/local/bin/backup.sh
 tail -20 /var/log/minecraft/backup.log
 ```
 
+### Expected Output
+
+A healthy run of `backup.log` looks like this (timestamps/size/level-name will vary):
+
+```
+2026-07-29T19:51:22+00:00 INFO: starting backup (level-name='world')
+2026-07-29T19:51:23+00:00 INFO: world flush confirmed after 1s
+2026-07-29T19:51:23+00:00 INFO: archiving: world/ server.properties whitelist.json ops.json banned-players.json banned-ips.json
+2026-07-29T19:51:23+00:00 INFO: uploading to s3://<BackupBucketName>/minecraft-backup-20260729-195123.tar.gz
+2026-07-29T19:51:26+00:00 INFO: upload verified (ContentLength=18657785 bytes)
+2026-07-29T19:51:26+00:00 INFO: pruning backups (retention=5)
+2026-07-29T19:51:27+00:00 INFO: found 1 backup(s) in S3
+2026-07-29T19:51:27+00:00 INFO: no pruning needed (1 <= 5)
+2026-07-29T19:51:27+00:00 BACKUP_SUCCESS: s3://<BackupBucketName>/minecraft-backup-20260729-195123.tar.gz (18657785 bytes)
+2026-07-29T19:51:27+00:00 INFO: save-on sent
+```
+
+Confirm the `BACKUP_SUCCESS` line has no preceding `Permission denied` errors, then verify
+the object actually landed in S3:
+
+```bash
+aws s3api list-objects-v2 --bucket <BackupBucketName> --prefix minecraft-backup \
+  --query 'sort_by(Contents, &LastModified)[].[Key,LastModified,Size]' --output table
+```
+
 ---
 
 ## Manual Backup Verification

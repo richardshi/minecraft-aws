@@ -39,8 +39,11 @@ FIFO_WRITE_TIMEOUT="${FIFO_WRITE_TIMEOUT:-5}"
 S3_PREFIX="minecraft-backup"
 
 # ---- Logging -----------------------------------------------------------------
+# The trailing `|| true` ensures a log-write failure (e.g. an unwritable
+# BACKUP_LOG) can never abort the backup itself under `set -e` - logging is
+# best-effort and must not gate whether a backup actually runs.
 log() {
-  echo "$(date -u --iso-8601=seconds) $*" >> "${BACKUP_LOG}"
+  echo "$(date -u --iso-8601=seconds) $*" >> "${BACKUP_LOG}" 2>/dev/null || true
 }
 
 # ---- Guard: check minecraft.service is active --------------------------------

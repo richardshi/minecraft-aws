@@ -341,6 +341,29 @@ create_mock_backups() {
   [ "$count" -eq 1 ]
 }
 
+# ---------------------------------------------------------------------------
+# 5b. Unwritable BACKUP_LOG must not abort the backup
+#
+# Reproduces the production incident where BACKUP_LOG was owned by root
+# (created by systemd's StandardOutput=append target before install.sh's
+# chown ran) so backup.sh's own log() writes got "Permission denied". Under
+# set -e, a log() call failing at the very first invocation silently aborted
+# every backup - the bucket stayed empty even though the timer fired hourly.
+# ---------------------------------------------------------------------------
+
+@test "still uploads to S3 when BACKUP_LOG is unwritable" {
+  simulate_flush_success
+  rm -f "${BACKUP_LOG}"
+  mkdir -p "${BACKUP_LOG}"
+  chmod 000 "${BACKUP_LOG}"
+  run_backup
+  chmod 755 "${BACKUP_LOG}"
+  [ "$status" -eq 0 ]
+  local count
+  count=$(ls "${MOCK_S3}"/minecraft-backup-*.tar.gz 2>/dev/null | wc -l)
+  [ "$count" -eq 1 ]
+}
+
 @test "backup archive contains the world directory" {
   simulate_flush_success
   printf 'chunk data\n' > "${MINECRAFT_DIR}/world/r.0.0.mca"

@@ -174,6 +174,17 @@ fi
 log "Creating directory structure under ${MINECRAFT_DIR}..."
 mkdir -p "${MINECRAFT_DIR}"
 mkdir -p "${LOG_DIR}"
+
+# Pre-create the log files owned by MINECRAFT_USER before any systemd unit
+# with User=${MINECRAFT_USER} ever opens them. Otherwise, since the service
+# manager (root) creates StandardOutput/StandardError append targets that
+# don't already exist, a first-ever service start would create these files
+# as root:root - and backup.sh's own internal log() writes (running as
+# MINECRAFT_USER) would then fail with "Permission denied" on every future
+# run, since only the initial mkdir/chown below runs once, before these
+# files exist otherwise.
+touch "${LOG_DIR}/server.log" "${LOG_DIR}/backup.log"
+
 chown -R "${MINECRAFT_USER}:${MINECRAFT_USER}" "${MINECRAFT_DIR}" "${LOG_DIR}"
 
 # ---- Minecraft server JAR ----------------------------------------------------
