@@ -209,6 +209,44 @@ empty backup is caught with zero downtime. Only steps 5-9 involve stopping the
 server, and 8-9 are the only steps that can trigger the automatic rollback - that's
 also the point at which a `world.pre-restore.*` copy first exists to roll back to.
 
+### Expected Output
+
+A healthy interactive restore (picking a backup from the list) looks like this
+(timestamps/keys will vary):
+
+```
+2026-07-29T20:36:00+00:00 [restore] Listing available backups in s3://<BackupBucketName>/ ...
+
+Available backups:
+  1. minecraft-backup-20260729-195123.tar.gz
+  2. minecraft-backup-20260729-200052.tar.gz
+  3. minecraft-backup-20260729-202052.tar.gz
+
+Enter backup number [1-3]: 2
+2026-07-29T20:36:11+00:00 [restore] Selected backup: s3://<BackupBucketName>/minecraft-backup-20260729-200052.tar.gz
+2026-07-29T20:36:11+00:00 [restore] Current level-name: 'world'
+2026-07-29T20:36:11+00:00 [restore] Downloading s3://<BackupBucketName>/minecraft-backup-20260729-200052.tar.gz ...
+2026-07-29T20:36:12+00:00 [restore] Validating archive...
+2026-07-29T20:36:12+00:00 [restore] Extracting into staging directory /opt/minecraft/.restore-staging ...
+2026-07-29T20:36:12+00:00 [restore] Verified staged archive contains 'world/'
+2026-07-29T20:36:12+00:00 [restore] Stopping minecraft.service...
+2026-07-29T20:36:23+00:00 [restore] minecraft.service stopped
+2026-07-29T20:36:23+00:00 [restore] Renaming /opt/minecraft/world -> /opt/minecraft/world.pre-restore.20260729-203623
+2026-07-29T20:36:23+00:00 [restore] Starting minecraft.service...
+2026-07-29T20:36:23+00:00 [restore] Waiting up to 90s for minecraft.service to report ready...
+2026-07-29T20:36:40+00:00 [restore] BACKUP_SUCCESS: minecraft.service is running with restored backup minecraft-backup-20260729-200052.tar.gz
+2026-07-29T20:36:40+00:00 [restore] Pre-restore world data preserved at: /opt/minecraft/world.pre-restore.20260729-203623
+2026-07-29T20:36:40+00:00 [restore]
+2026-07-29T20:36:40+00:00 [restore] IMPORTANT: Verify the server started correctly:
+2026-07-29T20:36:40+00:00 [restore]   systemctl status minecraft.service
+2026-07-29T20:36:40+00:00 [restore]   tail -f /var/log/minecraft/server.log
+```
+
+Confirm the final `BACKUP_SUCCESS` line, then always follow through on the two
+verification commands it prints (see "Post-Restore Verification" below) before
+considering the restore done - a healthy startup log line here does not by itself
+confirm the world content is correct, only that the server came up.
+
 ### Post-Restore Verification
 
 ```bash
