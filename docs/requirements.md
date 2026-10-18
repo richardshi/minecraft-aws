@@ -130,7 +130,7 @@ redeploy - no code change is needed.
 
 ## Assumptions and Constraints
 
-- Minecraft Java Edition 26.1.2 requires Java 25 (Amazon Corretto 25).
+- Minecraft Java Edition 26.x (currently 26.3, set by `minecraftVersion` in config) requires Java 25 (Amazon Corretto 25).
 - The server is intended for a small group (2-10 players). The `t3.medium` instance
   type is appropriate for this scale.
 - No load balancer, ECS, EKS, GameLift, or multiple EC2 instances are used.

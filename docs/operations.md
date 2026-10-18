@@ -233,6 +233,51 @@ tail -20 /var/log/minecraft/backup.log
 
 ---
 
+## Upgrading the Minecraft Version
+
+Players can only join when their client version matches the server. To upgrade the
+server, run this from `infra/` on your local machine:
+
+```bash
+scripts/upgrade-minecraft-version.sh 26.3
+```
+
+The script:
+
+1. Checks that the version is a release in Mojang's manifest and runs on Java 25.
+2. Refuses to downgrade. A world opened on a newer version can't be loaded by an
+   older one.
+3. Sets `minecraftVersion` in `infra/config/server-config.ts`.
+4. Takes a verified backup to S3 over SSM, if the instance is running. Use
+   `--skip-backup` to skip it.
+5. Runs `scripts/deploy-check-and-push.sh`, which shows the change set and asks you
+   to confirm. Changing the version changes user-data, so **`MinecraftInstance` is
+   replaced**. `MinecraftDataVolume`, `MinecraftBackupBucket` and `MinecraftEip`
+   must not appear as replaced.
+
+The deploy should take about 10-20 minutes, with about 5-10 minutes of downtime.
+These are estimates, not measured times. Before the volume handoff detaches the
+world volume, the old instance is stopped cleanly, which runs `save-all flush` and
+`stop`. The new instance's `install.sh` then downloads the new `server.jar`. The
+first start on the new version upgrades the world.
+
+Once the deploy finishes, check the new instance (new InstanceId in
+`minecraft-outputs.json`):
+
+```bash
+cat /opt/minecraft/.minecraft-version     # New version
+systemctl status minecraft.service        # active (running)
+grep 'Done (' /var/log/minecraft/server.log
+```
+
+Commit the `server-config.ts` change.
+
+**Rollback:** you can't just set the version back, because the world has already
+been upgraded. Set `minecraftVersion` back, deploy, and then restore the pre-upgrade
+backup the script took (see `docs/backup-and-restore.md`).
+
+---
+
 ## Updating the Bootstrap Installer
 
 User-data runs only on the first boot. To apply changes to the bootstrap scripts,
